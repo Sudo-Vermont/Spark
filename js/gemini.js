@@ -1,25 +1,55 @@
-// coach.js — AI coaching via Groq (free, fast, Llama 3)
-// Get a free key at https://console.groq.com
+// coach.js — 100% local coaching: face mesh math + keyword analysis (no API, no tokens)
 
 const GeminiCoach = (() => {
-  let apiKey = null;
   let analysisTimer = null;
-  let busy = false;
   let detectedTopics = new Set();
-  let coachVisible = false;
+  let coachVisible   = false;
+  let faceReady      = false;
 
   const $ = id => document.getElementById(id);
 
-  function setKey(key) { apiKey = key; }
+  // ── Keyword maps ──
+  const TOPIC_MAP = {
+    'music 🎵':    ['music','song','songs','artist','band','concert','playlist','spotify','album','genre','rap','pop','rock','jazz'],
+    'movies 🎬':   ['movie','movies','film','films','watch','netflix','cinema','series','show','episode','actor','director','hbo','disney'],
+    'travel ✈️':   ['travel','country','city','trip','vacation','flight','visit','abroad','europe','asia','beach','hotel','passport'],
+    'food 🍕':     ['food','eat','eating','restaurant','cook','cooking','meal','dinner','lunch','breakfast','pizza','sushi','recipe'],
+    'sports ⚽':   ['sport','sports','game','team','play','football','basketball','soccer','nfl','nba','workout','gym','fitness'],
+    'tech 💻':     ['tech','technology','computer','phone','app','code','coding','software','ai','startup','developer','programming'],
+    'school 📚':   ['school','college','university','study','class','homework','exam','degree','major','grade','campus','professor'],
+    'gaming 🎮':   ['game','games','gaming','xbox','playstation','pc','minecraft','roblox','fortnite','stream','twitch','esports'],
+    'art 🎨':      ['art','drawing','painting','design','creative','photography','fashion','style','aesthetic'],
+    'career 💼':   ['work','job','career','internship','salary','business','money','startup','entrepreneur','interview'],
+    'family 👨‍👩‍👧':  ['family','parents','mom','dad','sister','brother','home','house','kids','children','relationship'],
+  };
+
+  const POSITIVE_WORDS = new Set(['good','great','love','like','awesome','cool','nice','happy','fun','excited','amazing','wow','yes','totally','definitely','sure','agree','interesting','funny','haha','lol','lmao','enjoying']);
+  const NEGATIVE_WORDS = new Set(['bad','hate','boring','sad','angry','tired','upset','annoying','no','nope','ugh','whatever','idk','dunno','eh']);
+
+  // Rule-based conversation tips
+  const TIPS_QUIET    = ['Break the silence — ask them about their day!', 'Try asking an open-ended question to get things going.', 'Start with something light: "What have you been up to lately?"'];
+  const TIPS_BALANCE  = ['You\'re doing most of the talking — give them space to share too.', 'Ask a question and then really listen to the answer.'];
+  const TIPS_LISTEN   = ['Great — you\'re letting them talk! Add your own take to keep it balanced.', 'Share something about yourself to connect better.'];
+  const TIPS_GOING    = ['Good energy! Build on what they just said.', 'Nice flow — try going deeper on the current topic.', 'You\'re vibing! Ask a "why" question to get more insight.'];
+  const TIPS_POSITIVE = ['The mood is positive — great time to be a bit more playful!', 'Things are going well — keep the energy up!'];
+  const TIPS_TOPIC    = (t) => [`You\'re talking about ${t} — ask something more specific to go deeper.`, `Dig into ${t} more — what\'s their personal experience with it?`];
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  // ── Public API (same shape as before so app.js needs no changes) ──
+  function setKey() {} // no-op, kept for compatibility
 
   function init() {
+    FaceAnalyzer.init();
+    faceReady = true;
+
     $('coachClose').addEventListener('click', hidePanel);
     $('coachToggle').addEventListener('click', showPanel);
     $('coachRefresh').addEventListener('click', () => {
-      if (window.AppState) triggerAnalysis(AppState.transcript);
+      if (window.AppState) runAnalysis(AppState.transcript);
     });
     $('analyzeNowBtn').addEventListener('click', () => {
-      if (window.AppState) triggerAnalysis(AppState.transcript);
+      if (window.AppState) runAnalysis(AppState.transcript);
     });
   }
 
@@ -35,139 +65,174 @@ const GeminiCoach = (() => {
     $('coachToggle').style.display = 'flex';
   }
 
-  function showCoachUI() {
-    $('coachToggle').style.display = 'flex';
-    showPanel();
-  }
+  function showCoachUI() { $('coachToggle').style.display = 'flex'; showPanel(); }
+  function hideCoachUI() { $('coachPanel').classList.add('hidden'); $('coachToggle').style.display = 'none'; }
 
-  function hideCoachUI() {
-    $('coachPanel').classList.add('hidden');
-    $('coachToggle').style.display = 'none';
-  }
-
-  function startPeriodic(transcriptRef, ms = 16000) {
+  function startPeriodic(transcriptRef) {
     stopPeriodic();
-    setTimeout(() => triggerAnalysis(transcriptRef), 5000);
-    analysisTimer = setInterval(() => triggerAnalysis(transcriptRef), ms);
+    setTimeout(() => runAnalysis(transcriptRef), 3000);
+    analysisTimer = setInterval(() => runAnalysis(transcriptRef), 8000);
   }
 
   function stopPeriodic() {
     if (analysisTimer) { clearInterval(analysisTimer); analysisTimer = null; }
-    busy = false;
   }
 
-  async function triggerAnalysis(transcript) {
-    if (busy || !apiKey) return;
-    const lines = (transcript || []).slice(-12)
-      .map(l => `${l.who === 'you' ? 'Me' : 'Partner'}: ${l.text}`)
-      .join('\n');
-    if (!lines) return;
-
-    busy = true;
-    const hintEl     = $('coachHint');
-    const refreshBtn = $('coachRefresh');
-    if (hintEl)     hintEl.classList.add('loading');
-    if (refreshBtn) refreshBtn.classList.add('spinning');
-
-    const prompt = `You are a real-time conversation coach whispering advice to help someone have a better video chat.
-
-Recent transcript:
-${lines}
-
-Rules:
-- Give coaching SUGGESTIONS only — never write lines for the user to say verbatim
-- Be warm, specific, and brief
-- Base advice on what you actually read in the transcript
-
-Respond ONLY with valid JSON, no markdown, no code fences:
-{
-  "hint": "one specific coaching tip (max 2 sentences)",
-  "sentiment": "positive" or "neutral" or "negative",
-  "energy": <0-100>,
-  "curiosity": <0-100>,
-  "humor": <0-100>,
-  "depth": <0-100>,
-  "topics": ["2-4 short topic labels from the conversation"],
-  "questions": ["3 natural questions the user could ask next"],
-  "suggestedTopics": ["3-4 topic directions worth exploring"]
-}`;
-
-    try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.7,
-          max_tokens: 512
-        })
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message || `HTTP ${res.status}`);
-      }
-
-      const data  = await res.json();
-      const raw   = data.choices?.[0]?.message?.content || '{}';
-      const clean = raw.replace(/```json|```/g, '').trim();
-      applyResult(JSON.parse(clean));
-    } catch (e) {
-      console.warn('Coach error:', e.message);
-      if (hintEl) hintEl.textContent = `Coach error: ${e.message}`;
-    } finally {
-      if (hintEl)     hintEl.classList.remove('loading');
-      if (refreshBtn) refreshBtn.classList.remove('spinning');
-      busy = false;
-    }
+  // ── Core analysis ──
+  async function runAnalysis(transcript) {
+    analyzeTranscript(transcript);
+    await analyzeFace();
   }
 
-  function applyResult(d) {
+  function analyzeTranscript(transcript) {
+    const msgs = transcript || [];
     const hintEl = $('coachHint');
-    if (hintEl && d.hint) hintEl.textContent = d.hint;
 
-    if (d.suggestedTopics?.length)
-      $('coachTopics').innerHTML = d.suggestedTopics.map(t => `<span class="coach-topic-btn">${t}</span>`).join('');
+    if (msgs.length === 0) {
+      if (hintEl) hintEl.textContent = 'Say something to get started!';
+      return;
+    }
 
-    if (d.questions?.length)
-      $('coachQuestions').innerHTML = d.questions.map(q => `<div class="coach-question">${q}</div>`).join('');
+    // Count speaker balance
+    const youCount  = msgs.filter(m => m.who === 'you').length;
+    const themCount = msgs.filter(m => m.who === 'them').length;
+    const total     = youCount + themCount;
 
-    const sent    = d.sentiment || 'neutral';
-    const emoji   = sent === 'positive' ? '😊' : sent === 'negative' ? '😕' : '😐';
-    const snippet = (d.hint || '').slice(0, 90) + ((d.hint?.length || 0) > 90 ? '…' : '');
-    const topicTags = (d.topics || []).slice(0, 3).map(t => `<span class="topic-tag">${t}</span>`).join('');
+    // Sentiment from last 8 messages
+    const recentText = msgs.slice(-8).map(m => m.text.toLowerCase()).join(' ');
+    const words = recentText.split(/\W+/);
+    let pos = 0, neg = 0;
+    words.forEach(w => { if (POSITIVE_WORDS.has(w)) pos++; if (NEGATIVE_WORDS.has(w)) neg++; });
+    const sentiment = pos > neg * 1.5 ? 'positive' : neg > pos * 1.5 ? 'negative' : 'neutral';
 
-    $('analysisContent').innerHTML = `
-      <div class="analysis-section">
-        <div class="analysis-label">Sentiment</div>
-        <div class="analysis-value"><span class="sentiment-pill ${sent}">${emoji} ${sent}</span></div>
-      </div>
-      <div class="analysis-divider"></div>
-      <div class="analysis-section" style="flex:1;min-width:0">
-        <div class="analysis-label">✦ AI coach</div>
-        <div class="analysis-value live-text">${snippet}</div>
-      </div>
-      ${topicTags ? `<div class="analysis-divider"></div><div class="analysis-section"><div class="analysis-label">Topics</div><div class="topic-tags">${topicTags}</div></div>` : ''}`;
+    // Topic detection
+    const allText = msgs.map(m => m.text.toLowerCase()).join(' ');
+    const foundTopics = [];
+    for (const [label, keywords] of Object.entries(TOPIC_MAP)) {
+      if (keywords.some(k => allText.includes(k))) foundTopics.push(label);
+    }
+    foundTopics.forEach(t => detectedTopics.add(t));
+    renderTopics();
+    updateTopicBtns(foundTopics);
 
-    ['energy','curiosity','humor','depth'].forEach(k => {
-      const v = d[k];
-      if (typeof v !== 'number') return;
-      const val = Math.min(100, Math.max(0, Math.round(v)));
+    // Pick conversation tip
+    let tip;
+    if (total < 3)                          tip = pick(TIPS_QUIET);
+    else if (youCount > themCount * 2.5)    tip = pick(TIPS_BALANCE);
+    else if (themCount > youCount * 2.5)    tip = pick(TIPS_LISTEN);
+    else if (sentiment === 'positive')      tip = pick(TIPS_POSITIVE);
+    else if (foundTopics.length > 0)        tip = pick(TIPS_TOPIC(foundTopics[foundTopics.length - 1]));
+    else                                    tip = pick(TIPS_GOING);
+
+    if (hintEl) hintEl.textContent = tip;
+
+    // Update sentiment in analysis bar
+    const emoji = sentiment === 'positive' ? '😊' : sentiment === 'negative' ? '😕' : '😐';
+    const lastMsg = msgs[msgs.length - 1];
+    const snippet = lastMsg ? `${lastMsg.who === 'you' ? 'You' : 'Them'}: ${lastMsg.text}`.slice(0, 80) : '';
+    const topicTags = foundTopics.slice(0, 3).map(t => `<span class="topic-tag">${t.split(' ')[0]}</span>`).join('');
+
+    const analysisEl = $('analysisContent');
+    if (analysisEl) {
+      analysisEl.innerHTML = `
+        <div class="analysis-section">
+          <div class="analysis-label">Sentiment</div>
+          <div class="analysis-value"><span class="sentiment-pill ${sentiment}">${emoji} ${sentiment}</span></div>
+        </div>
+        <div class="analysis-divider"></div>
+        <div class="analysis-section" style="flex:1;min-width:0">
+          <div class="analysis-label">✦ local analysis</div>
+          <div class="analysis-value live-text">${snippet}</div>
+        </div>
+        ${topicTags ? `<div class="analysis-divider"></div><div class="analysis-section"><div class="analysis-label">Topics</div><div class="topic-tags">${topicTags}</div></div>` : ''}`;
+    }
+
+    // Update mood bars from message counts + sentiment
+    const energy    = Math.min(100, Math.round((total / 20) * 100));
+    const curiosity = Math.min(100, msgs.filter(m => m.text.includes('?')).length * 20);
+    const humor     = Math.min(100, words.filter(w => ['haha','lol','lmao','funny','joke','hahaha'].includes(w)).length * 25);
+    const depth     = Math.min(100, Math.round(msgs.reduce((s, m) => s + m.text.split(' ').length, 0) / Math.max(1, total) * 5));
+    updateMoodBars({ energy, curiosity, humor, depth });
+
+    // Update questions based on topics
+    updateQuestions(foundTopics, sentiment);
+  }
+
+  async function analyzeFace() {
+    const videoEl = document.getElementById('localVideo');
+    if (!faceReady || !videoEl) return;
+    const m = await FaceAnalyzer.analyze(videoEl);
+
+    const overall  = $('faceOverall');
+    if (!m) {
+      if (overall) overall.textContent = 'no face detected';
+      ['symmetry','thirds','golden'].forEach(k => {
+        const bar = $('fm-' + k), val = $('fv-' + k.replace('fm-',''));
+        if (bar) bar.style.width = '0%';
+      });
+      $('fv-symmetry') && ($('fv-symmetry').textContent = '—');
+      $('fv-thirds')   && ($('fv-thirds').textContent   = '—');
+      $('fv-golden')   && ($('fv-golden').textContent   = '—');
+      $('fv-canthal')  && ($('fv-canthal').textContent  = '—');
+      return;
+    }
+
+    setBar('fm-symmetry', 'fv-symmetry', m.symmetryScore);
+    setBar('fm-thirds',   'fv-thirds',   m.thirdsScore);
+    setBar('fm-golden',   'fv-golden',   m.goldenScore);
+    if ($('fv-canthal')) $('fv-canthal').textContent = m.canthalLabel;
+    if (overall) overall.textContent = `Overall: ${m.overall}/100 — ${m.label}`;
+  }
+
+  function setBar(barId, valId, score) {
+    const bar = $(barId), val = $(valId);
+    if (bar) bar.style.width = score + '%';
+    if (val) val.textContent = score + '%';
+  }
+
+  function updateMoodBars(scores) {
+    Object.entries(scores).forEach(([k, v]) => {
       const bar = $('mood-' + k), pct = $('pct-' + k);
-      if (bar) bar.style.width = val + '%';
-      if (pct) pct.textContent = val + '%';
+      if (bar) bar.style.width = v + '%';
+      if (pct) pct.textContent = v + '%';
     });
     const note = $('moodNote');
-    if (note) note.textContent = '✦ transcript analyzed';
+    if (note) note.textContent = '✦ local analysis';
+  }
 
-    if (d.topics?.length) {
-      d.topics.forEach(t => detectedTopics.add(t));
-      renderTopics();
+  function updateTopicBtns(topics) {
+    const el = $('coachTopics');
+    if (!el) return;
+    if (topics.length === 0) {
+      el.innerHTML = '<span class="coach-topic-btn" style="opacity:0.4">none yet</span>';
+    } else {
+      el.innerHTML = topics.map(t => `<span class="coach-topic-btn">${t}</span>`).join('');
     }
+  }
+
+  const QUESTIONS_BY_TOPIC = {
+    'music 🎵':  ['What artist have you been listening to nonstop?', 'Do you play any instruments?', 'What concert changed your life?'],
+    'movies 🎬': ['What\'s the last great movie you watched?', 'Are you more into films or series?', 'What genre do you always go back to?'],
+    'travel ✈️': ['What\'s the best place you\'ve ever visited?', 'Where do you want to go next?', 'Do you prefer cities or nature?'],
+    'food 🍕':   ['What\'s your go-to comfort food?', 'Do you cook or prefer eating out?', 'Best meal you\'ve ever had?'],
+    'gaming 🎮': ['What game are you addicted to right now?', 'Console, PC or mobile?', 'Do you prefer solo or multiplayer?'],
+    'tech 💻':   ['What tech are you excited about lately?', 'Are you into coding?', 'What app do you use the most?'],
+  };
+
+  const DEFAULT_QUESTIONS = [
+    'What\'s something you\'ve been really into lately?',
+    'If you could travel anywhere right now, where?',
+    'What\'s a show that changed how you think?',
+  ];
+
+  function updateQuestions(topics, sentiment) {
+    const el = $('coachQuestions');
+    if (!el) return;
+    let questions = DEFAULT_QUESTIONS;
+    for (const t of topics) {
+      if (QUESTIONS_BY_TOPIC[t]) { questions = QUESTIONS_BY_TOPIC[t]; break; }
+    }
+    el.innerHTML = questions.map(q => `<div class="coach-question">${q}</div>`).join('');
   }
 
   function renderTopics() {
@@ -177,7 +242,7 @@ Respond ONLY with valid JSON, no markdown, no code fences:
     detectedTopics.forEach(t => {
       const s = document.createElement('span');
       s.className = 'topic-pill';
-      s.textContent = t;
+      s.textContent = t.split(' ')[0];
       el.appendChild(s);
     });
   }
@@ -186,6 +251,7 @@ Respond ONLY with valid JSON, no markdown, no code fences:
     detectedTopics.clear();
     const el = $('detectedTopics');
     if (el) el.innerHTML = '<span class="topic-empty">none detected yet</span>';
+    updateTopicBtns([]);
   }
 
   function setScanning(msg) {
@@ -198,6 +264,9 @@ Respond ONLY with valid JSON, no markdown, no code fences:
     const el = $('typingIndicator');
     if (el) el.classList.toggle('show', show);
   }
+
+  // Compatibility shim — app.js calls triggerAnalysis(transcript)
+  function triggerAnalysis(transcript) { runAnalysis(transcript); }
 
   return {
     setKey, init,

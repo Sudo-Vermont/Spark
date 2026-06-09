@@ -174,25 +174,53 @@
 <div id="coachPanel" class="coach-panel hidden">
   <div class="coach-card">
     <div class="coach-header">
-      <div class="coach-title"><span>✦</span> AI Coach</div>
+      <div class="coach-title"><span>✦</span> Coach</div>
       <button class="coach-close" id="coachClose">✕</button>
     </div>
     <div class="coach-body">
-      <div class="coach-hint-label">💡 Hint</div>
-      <div class="coach-hint-text" id="coachHint">Connect to someone and Gemini will start coaching you...</div>
+
+      <!-- Conversation tip -->
+      <div class="coach-hint-label">💡 Tip</div>
+      <div class="coach-hint-text" id="coachHint">Connect to someone to start coaching...</div>
 
       <div class="coach-divider"></div>
 
-      <div class="coach-section-label">🔥 Suggested topics</div>
-      <div class="coach-topic-btns" id="coachTopics">
-        <span class="coach-topic-btn">travel 🌍</span>
-        <span class="coach-topic-btn">music 🎵</span>
-        <span class="coach-topic-btn">movies 🎬</span>
-        <span class="coach-topic-btn">hobbies 🎯</span>
+      <!-- Face analysis -->
+      <div class="coach-section-label">📐 Your Face Analysis</div>
+      <div class="face-metrics" id="faceMetrics">
+        <div class="face-metric-row">
+          <span class="face-metric-name">Symmetry</span>
+          <div class="face-metric-bar-track"><div class="face-metric-bar" id="fm-symmetry"></div></div>
+          <span class="face-metric-val" id="fv-symmetry">—</span>
+        </div>
+        <div class="face-metric-row">
+          <span class="face-metric-name">Canthal tilt</span>
+          <span class="face-metric-val" id="fv-canthal">—</span>
+        </div>
+        <div class="face-metric-row">
+          <span class="face-metric-name">Facial thirds</span>
+          <div class="face-metric-bar-track"><div class="face-metric-bar" id="fm-thirds"></div></div>
+          <span class="face-metric-val" id="fv-thirds">—</span>
+        </div>
+        <div class="face-metric-row">
+          <span class="face-metric-name">Golden ratio</span>
+          <div class="face-metric-bar-track"><div class="face-metric-bar" id="fm-golden"></div></div>
+          <span class="face-metric-val" id="fv-golden">—</span>
+        </div>
+        <div class="face-overall" id="faceOverall">no face detected</div>
       </div>
 
       <div class="coach-divider"></div>
 
+      <!-- Topics -->
+      <div class="coach-section-label">🔥 Detected topics</div>
+      <div class="coach-topic-btns" id="coachTopics">
+        <span class="coach-topic-btn" style="opacity:0.4">none yet</span>
+      </div>
+
+      <div class="coach-divider"></div>
+
+      <!-- Questions -->
       <div class="coach-section-label">❓ Questions to ask</div>
       <div id="coachQuestions">
         <div class="coach-question">What's something you've been really into lately?</div>
@@ -202,17 +230,19 @@
 
       <button class="coach-refresh" id="coachRefresh">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-        refresh suggestions
+        refresh
       </button>
     </div>
   </div>
 </div>
 
-<button class="coach-toggle" id="coachToggle" style="display:none">✦ AI Coach</button>
+<button class="coach-toggle" id="coachToggle" style="display:none">✦ Coach</button>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 <script src="js/config.js"></script>
 <script src="js/speech.js"></script>
+<script src="js/facemesh.js"></script>
 <script src="js/gemini.js"></script>
 <script src="js/app.js"></script>
 </body>

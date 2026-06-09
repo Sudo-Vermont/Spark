@@ -65,16 +65,6 @@ const AppState = {
     return arr;
   }
 
-  // ── API key — localStorage with fallback to config.js ──
-  function getApiKey() {
-    return (typeof SPARK_CONFIG !== 'undefined' ? SPARK_CONFIG.groqApiKey : null) || null;
-  }
-
-  function saveApiKey(key) {
-    localStorage.removeItem('spark_gemini_key'); // clear old Gemini key if any
-    localStorage.setItem('spark_groq_key', key);
-  }
-
   // ── Start / setup ──
   els.startBtn.addEventListener('click', async () => {
     // Camera + mic — try video+audio, fall back to audio-only
@@ -86,30 +76,14 @@ const AppState = {
       }, { once: true });
     } catch (e) {
       console.warn('Camera+mic failed:', e.message);
-      // Try audio-only fallback
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
         els.localOverlay.querySelector('.video-placeholder-text').textContent = 'camera unavailable';
       } catch (e2) {
         console.warn('Audio also failed:', e2.message);
-        // Show user-friendly message but keep going (they can still connect)
-        els.localOverlay.querySelector('.video-placeholder-text').textContent = 'no camera or mic found';
-        els.startBtn.textContent = '⚠️ Check camera permissions in browser settings, then try again';
+        els.localOverlay.querySelector('.video-placeholder-text').textContent = 'no camera or mic — check permissions';
       }
     }
-
-    // API key — optional, coaching silently disabled if missing
-    let apiKey = getApiKey();
-    if (!apiKey) {
-      apiKey = prompt('Enter your Groq API key to enable AI coaching:\n(Get one free at https://console.groq.com → API Keys)\n\nLeave blank to skip coaching.');
-      if (apiKey && apiKey.trim()) {
-        apiKey = apiKey.trim();
-        saveApiKey(apiKey);
-      } else {
-        apiKey = null;
-      }
-    }
-    if (apiKey) GeminiCoach.setKey(apiKey);
 
     // Hide setup, show app
     els.setupScreen.classList.add('fade-out');
