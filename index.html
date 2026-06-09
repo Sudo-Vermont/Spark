@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spark — AI Video Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>Spark</div>
+  <div class="header-right">
+    <div class="status-badge">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">offline</span>
+    </div>
+    <div class="session-timer" id="sessionTimer">00:00</div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- SPLASH SCREEN — room code only -->
+  <div class="setup-screen" id="setupScreen">
+    <div class="setup-card">
+      <div class="splash-logo">
+        <div class="logo-dot" style="width:16px;height:16px;margin-bottom:4px"></div>
+      </div>
+      <h1 class="setup-title">Spark</h1>
+      <p class="setup-sub">AI-coached video chat. Get matched with a random stranger instantly.</p>
+
+      <button class="btn-start" id="startBtn">
+        <span class="btn-start-icon">🎥</span> Find a Match
+      </button>
+      <p class="setup-note">Peer-to-peer video · AI coaching powered by Gemini</p>
+    </div>
+  </div>
+
+  <!-- VIDEO AREA -->
+  <div class="video-area" id="videoArea" style="display:none">
+    <div class="videos-row">
+
+      <div class="video-card" id="localCard">
+        <video id="localVideo" autoplay muted playsinline></video>
+        <div class="video-overlay" id="localOverlay">
+          <div class="video-avatar">🙂</div>
+          <div class="video-placeholder-text">your camera</div>
+        </div>
+        <div class="video-label">You</div>
+      </div>
+
+      <div class="video-card" id="remoteCard">
+        <video id="remoteVideo" autoplay playsinline></video>
+        <div class="video-overlay" id="remoteOverlay">
+          <div class="waiting-state">
+            <div class="waiting-icon">👤</div>
+            <div class="waiting-title" id="waitingTitle">Waiting for partner</div>
+            <div class="waiting-sub" id="waitingSub">Share your room code to connect</div>
+          </div>
+        </div>
+        <div class="connected-flash" id="connectedFlash"></div>
+        <div class="video-label" id="strangerLabel" style="display:none">Partner</div>
+        <div class="room-badge" id="roomBadge"></div>
+      </div>
+    </div>
+
+    <!-- Analysis Bar -->
+    <div class="analysis-bar">
+      <div id="analysisContent">
+        <div class="analysis-scanning">
+          <span>waiting to connect</span>
+          <div class="scan-dots"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="btn-icon" id="muteBtn" title="Mute mic">🎤</button>
+      <button class="btn-icon" id="camBtn" title="Toggle camera">📷</button>
+      <button class="btn-end" id="endBtn">End Chat</button>
+      <button class="btn-icon" id="analyzeNowBtn" title="Analyze now">✦</button>
+    </div>
+
+    <!-- Your input -->
+    <div class="you-input-row">
+      <div class="you-input-label">What you said <span class="speech-status" id="speechStatus"></span></div>
+      <div class="you-input-wrap">
+        <input type="text" id="youInput" class="you-input" placeholder="Connect to someone first..." disabled />
+        <button class="you-send-btn" id="youSendBtn" disabled title="Send (Enter)">↵</button>
+        <button class="you-mic-btn" id="youMicBtn" disabled title="Push to talk">🎙</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar" style="display:none">
+
+    <div class="sidebar-card">
+      <div class="sidebar-card-header">
+        <div class="sidebar-card-title">
+          <div class="indicator" id="transcriptIndicator"></div>
+          Live Transcript
+        </div>
+      </div>
+      <div class="sidebar-card-body">
+        <div class="transcript-container" id="transcriptContainer">
+          <div class="transcript-empty">transcript appears when connected</div>
+        </div>
+        <div class="typing-indicator" id="typingIndicator">
+          <span></span><span></span><span></span>
+          <span class="typing-label">partner speaking...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-card">
+      <div class="sidebar-card-header">
+        <div class="sidebar-card-title">Conversation Mood</div>
+      </div>
+      <div class="sidebar-card-body">
+        <div class="mood-bars">
+          <div class="mood-row">
+            <span class="mood-name">energy</span>
+            <div class="mood-bar-track"><div class="mood-bar-fill" id="mood-energy" style="width:0%;background:var(--accent)"></div></div>
+            <span class="mood-pct" id="pct-energy">—</span>
+          </div>
+          <div class="mood-row">
+            <span class="mood-name">curiosity</span>
+            <div class="mood-bar-track"><div class="mood-bar-fill" id="mood-curiosity" style="width:0%;background:var(--teal)"></div></div>
+            <span class="mood-pct" id="pct-curiosity">—</span>
+          </div>
+          <div class="mood-row">
+            <span class="mood-name">humor</span>
+            <div class="mood-bar-track"><div class="mood-bar-fill" id="mood-humor" style="width:0%;background:var(--amber)"></div></div>
+            <span class="mood-pct" id="pct-humor">—</span>
+          </div>
+          <div class="mood-row">
+            <span class="mood-name">depth</span>
+            <div class="mood-bar-track"><div class="mood-bar-fill" id="mood-depth" style="width:0%;background:#f472b6"></div></div>
+            <span class="mood-pct" id="pct-depth">—</span>
+          </div>
+        </div>
+        <p class="mood-note" id="moodNote">connect to analyze mood</p>
+      </div>
+    </div>
+
+    <div class="sidebar-card">
+      <div class="sidebar-card-header">
+        <div class="sidebar-card-title">Detected Topics</div>
+      </div>
+      <div class="sidebar-card-body">
+        <div id="detectedTopics" class="detected-topics">
+          <span class="topic-empty">none detected yet</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-info">
+      ✦ Gemini analyzes real video frames + speech &nbsp;·&nbsp; peer-to-peer encrypted
+    </div>
+  </div>
+</div>
+
+<!-- AI COACH PANEL -->
+<div id="coachPanel" class="coach-panel hidden">
+  <div class="coach-card">
+    <div class="coach-header">
+      <div class="coach-title"><span>✦</span> AI Coach</div>
+      <button class="coach-close" id="coachClose">✕</button>
+    </div>
+    <div class="coach-body">
+      <div class="coach-hint-label">💡 Hint</div>
+      <div class="coach-hint-text" id="coachHint">Connect to someone and Gemini will start coaching you...</div>
+
+      <div class="coach-divider"></div>
+
+      <div class="coach-section-label">🔥 Suggested topics</div>
+      <div class="coach-topic-btns" id="coachTopics">
+        <span class="coach-topic-btn">travel 🌍</span>
+        <span class="coach-topic-btn">music 🎵</span>
+        <span class="coach-topic-btn">movies 🎬</span>
+        <span class="coach-topic-btn">hobbies 🎯</span>
+      </div>
+
+      <div class="coach-divider"></div>
+
+      <div class="coach-section-label">❓ Questions to ask</div>
+      <div id="coachQuestions">
+        <div class="coach-question">What's something you've been really into lately?</div>
+        <div class="coach-question">If you could travel anywhere right now, where?</div>
+        <div class="coach-question">What's a show that changed how you think?</div>
+      </div>
+
+      <button class="coach-refresh" id="coachRefresh">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        refresh suggestions
+      </button>
+    </div>
+  </div>
+</div>
+
+<button class="coach-toggle" id="coachToggle" style="display:none">✦ AI Coach</button>
+
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/speech.js"></script>
+<script src="js/gemini.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
