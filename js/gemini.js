@@ -131,7 +131,6 @@ const GeminiCoach = (() => {
     const emoji = sentiment === 'positive' ? '😊' : sentiment === 'negative' ? '😕' : '😐';
     const lastMsg = msgs[msgs.length - 1];
     const snippet = lastMsg ? `${lastMsg.who === 'you' ? 'You' : 'Them'}: ${lastMsg.text}`.slice(0, 80) : '';
-    const topicTags = foundTopics.slice(0, 3).map(t => `<span class="topic-tag">${t.split(' ')[0]}</span>`).join('');
 
     const analysisEl = $('analysisContent');
     if (analysisEl) {
@@ -144,8 +143,7 @@ const GeminiCoach = (() => {
         <div class="analysis-section" style="flex:1;min-width:0">
           <div class="analysis-label">✦ local analysis</div>
           <div class="analysis-value live-text">${snippet}</div>
-        </div>
-        ${topicTags ? `<div class="analysis-divider"></div><div class="analysis-section"><div class="analysis-label">Topics</div><div class="topic-tags">${topicTags}</div></div>` : ''}`;
+        </div>`;
     }
 
     // Update mood bars from message counts + sentiment

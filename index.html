@@ -104,7 +104,7 @@
   <!-- SIDEBAR -->
   <div class="sidebar" id="sidebar" style="display:none">
 
-    <div class="sidebar-card">
+    <div class="sidebar-card" style="display:none">
       <div class="sidebar-card-header">
         <div class="sidebar-card-title">
           <div class="indicator" id="transcriptIndicator"></div>
@@ -153,7 +153,7 @@
       </div>
     </div>
 
-    <div class="sidebar-card">
+    <div class="sidebar-card" style="display:none">
       <div class="sidebar-card-header">
         <div class="sidebar-card-title">Detected Topics</div>
       </div>
@@ -232,12 +232,12 @@
         </div>
       </div>
 
-      <div class="coach-divider"></div>
-
-      <!-- Topics -->
-      <div class="coach-section-label">🔥 Detected topics</div>
-      <div class="coach-topic-btns" id="coachTopics">
-        <span class="coach-topic-btn" style="opacity:0.4">none yet</span>
+      <!-- Topics (hidden — still tracked in background for analysis) -->
+      <div style="display:none">
+        <div class="coach-section-label">🔥 Detected topics</div>
+        <div class="coach-topic-btns" id="coachTopics">
+          <span class="coach-topic-btn" style="opacity:0.4">none yet</span>
+        </div>
       </div>
 
       <div class="coach-divider"></div>
