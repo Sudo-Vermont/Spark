@@ -80,17 +80,7 @@ const AppState = {
 
   // ── Start / setup ──
   els.startBtn.addEventListener('click', async () => {
-    let apiKey = getApiKey();
-    if (!apiKey) {
-      apiKey = prompt('Enter your Gemini API key to enable AI coaching:\n(Get one free at https://aistudio.google.com/app/apikey)');
-      if (!apiKey || !apiKey.trim()) { return; }
-      apiKey = apiKey.trim();
-      saveApiKey(apiKey);
-    }
-
-    GeminiCoach.setKey(apiKey);
-
-    // Get camera + mic
+    // Camera first — never blocked by API key
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       els.localVideo.srcObject = localStream;
@@ -100,6 +90,19 @@ const AppState = {
     } catch (e) {
       console.warn('Camera denied:', e.message);
     }
+
+    // API key — optional, coaching silently disabled if missing
+    let apiKey = getApiKey();
+    if (!apiKey) {
+      apiKey = prompt('Enter your Gemini API key to enable AI coaching:\n(Get one free at https://aistudio.google.com/app/apikey)\n\nLeave blank to skip coaching.');
+      if (apiKey && apiKey.trim()) {
+        apiKey = apiKey.trim();
+        saveApiKey(apiKey);
+      } else {
+        apiKey = null;
+      }
+    }
+    if (apiKey) GeminiCoach.setKey(apiKey);
 
     // Hide setup, show app
     els.setupScreen.classList.add('fade-out');
