@@ -203,6 +203,13 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .face-metric-val { font-size:11px; font-family:var(--mono); color:var(--text3); min-width:36px; text-align:right; }
 .face-overall { font-size:12px; font-family:var(--mono); color:var(--accent2); text-align:center; margin-top:4px; padding:5px; background:rgba(124,106,247,0.08); border-radius:var(--r-sm); }
 
+/* PARTNER MOOD */
+.partner-mood-display { display:flex; flex-direction:column; gap:7px; }
+.partner-mood-row { display:flex; align-items:center; gap:10px; padding:7px 11px; background:rgba(45,212,191,0.06); border-radius:var(--r-sm); border:1px solid rgba(45,212,191,0.15); }
+.partner-mood-emoji { font-size:22px; line-height:1; flex-shrink:0; }
+.partner-mood-label { font-size:13px; font-weight:600; color:var(--text); flex:1; text-transform:capitalize; }
+.partner-mood-conf { font-size:11px; font-family:var(--mono); color:var(--teal); white-space:nowrap; }
+
 .coach-refresh { width:100%; margin-top:10px; padding:8px; background:rgba(124,106,247,0.08); border:1px solid rgba(124,106,247,0.15); border-radius:var(--r-sm); color:var(--accent2); font-size:12px; font-family:var(--mono); cursor:pointer; transition:all 0.18s; display:flex; align-items:center; justify-content:center; gap:6px; }
 .coach-refresh:hover { background:rgba(124,106,247,0.16); }
 .coach-refresh.spinning svg { animation:spin 0.8s linear infinite; }

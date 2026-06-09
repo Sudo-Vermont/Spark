@@ -82,6 +82,7 @@ const GeminiCoach = (() => {
   async function runAnalysis(transcript) {
     analyzeTranscript(transcript);
     await analyzeFace();
+    await analyzePartnerFace();
   }
 
   function analyzeTranscript(transcript) {
@@ -156,6 +157,31 @@ const GeminiCoach = (() => {
 
     // Update questions based on topics
     updateQuestions(foundTopics, sentiment);
+  }
+
+  async function analyzePartnerFace() {
+    const videoEl = document.getElementById('remoteVideo');
+    if (!faceReady || !videoEl) return;
+    const m = await FaceAnalyzer.analyzeMood(videoEl);
+
+    const emojiEl = $('partnerMoodEmoji');
+    const labelEl = $('partnerMoodLabel');
+    const confEl  = $('partnerMoodConf');
+
+    if (!m) {
+      if (emojiEl) emojiEl.textContent = '—';
+      if (labelEl) labelEl.textContent = 'no face detected';
+      if (confEl)  confEl.textContent  = '';
+      setBar('fm-smile', 'fv-smile', 0);
+      setBar('fm-alert', 'fv-alert', 0);
+      return;
+    }
+
+    if (emojiEl) emojiEl.textContent = m.emoji;
+    if (labelEl) labelEl.textContent = m.mood;
+    if (confEl)  confEl.textContent  = m.confidence + '%';
+    setBar('fm-smile', 'fv-smile', m.smileBar);
+    setBar('fm-alert', 'fv-alert', m.alertness);
   }
 
   async function analyzeFace() {
