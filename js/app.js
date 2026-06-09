@@ -67,16 +67,13 @@ const AppState = {
 
   // ── API key — localStorage with fallback to config.js ──
   function getApiKey() {
-    const stored = localStorage.getItem('spark_gemini_key');
-    if (stored) return stored;
-    if (typeof SPARK_CONFIG !== 'undefined' && SPARK_CONFIG.geminiApiKey &&
-        SPARK_CONFIG.geminiApiKey !== 'YOUR_GEMINI_API_KEY_HERE') {
-      return SPARK_CONFIG.geminiApiKey;
-    }
-    return null;
+    return localStorage.getItem('spark_groq_key') || null;
   }
 
-  function saveApiKey(key) { localStorage.setItem('spark_gemini_key', key); }
+  function saveApiKey(key) {
+    localStorage.removeItem('spark_gemini_key'); // clear old Gemini key if any
+    localStorage.setItem('spark_groq_key', key);
+  }
 
   // ── Start / setup ──
   els.startBtn.addEventListener('click', async () => {
@@ -104,7 +101,7 @@ const AppState = {
     // API key — optional, coaching silently disabled if missing
     let apiKey = getApiKey();
     if (!apiKey) {
-      apiKey = prompt('Enter your Gemini API key to enable AI coaching:\n(Get one free at https://aistudio.google.com/app/apikey)\n\nLeave blank to skip coaching.');
+      apiKey = prompt('Enter your Groq API key to enable AI coaching:\n(Get one free at https://console.groq.com → API Keys)\n\nLeave blank to skip coaching.');
       if (apiKey && apiKey.trim()) {
         apiKey = apiKey.trim();
         saveApiKey(apiKey);

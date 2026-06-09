@@ -1,5 +1,5 @@
-// gemini.js — calls Google Gemini API (text-only, no canvas/video frames)
-// Text-only keeps memory low and is faster + more reliable than vision
+// coach.js — AI coaching via Groq (free, fast, Llama 3)
+// Get a free key at https://console.groq.com
 
 const GeminiCoach = (() => {
   let apiKey = null;
@@ -61,10 +61,10 @@ const GeminiCoach = (() => {
     const lines = (transcript || []).slice(-12)
       .map(l => `${l.who === 'you' ? 'Me' : 'Partner'}: ${l.text}`)
       .join('\n');
-    if (!lines) return;   // nothing to analyze yet
+    if (!lines) return;
 
     busy = true;
-    const hintEl    = $('coachHint');
+    const hintEl     = $('coachHint');
     const refreshBtn = $('coachRefresh');
     if (hintEl)     hintEl.classList.add('loading');
     if (refreshBtn) refreshBtn.classList.add('spinning');
@@ -93,26 +93,31 @@ Respond ONLY with valid JSON, no markdown, no code fences:
 }`;
 
     try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        }
-      );
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 512
+        })
+      });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.error?.message || `HTTP ${res.status}`);
       }
 
-      const data = await res.json();
-      const raw   = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      const data  = await res.json();
+      const raw   = data.choices?.[0]?.message?.content || '{}';
       const clean = raw.replace(/```json|```/g, '').trim();
       applyResult(JSON.parse(clean));
     } catch (e) {
-      console.warn('Gemini error:', e.message);
+      console.warn('Coach error:', e.message);
       if (hintEl) hintEl.textContent = `Coach error: ${e.message}`;
     } finally {
       if (hintEl)     hintEl.classList.remove('loading');
@@ -131,9 +136,8 @@ Respond ONLY with valid JSON, no markdown, no code fences:
     if (d.questions?.length)
       $('coachQuestions').innerHTML = d.questions.map(q => `<div class="coach-question">${q}</div>`).join('');
 
-    // Analysis bar
-    const sent = d.sentiment || 'neutral';
-    const emoji = sent === 'positive' ? '😊' : sent === 'negative' ? '😕' : '😐';
+    const sent    = d.sentiment || 'neutral';
+    const emoji   = sent === 'positive' ? '😊' : sent === 'negative' ? '😕' : '😐';
     const snippet = (d.hint || '').slice(0, 90) + ((d.hint?.length || 0) > 90 ? '…' : '');
     const topicTags = (d.topics || []).slice(0, 3).map(t => `<span class="topic-tag">${t}</span>`).join('');
 
@@ -144,12 +148,11 @@ Respond ONLY with valid JSON, no markdown, no code fences:
       </div>
       <div class="analysis-divider"></div>
       <div class="analysis-section" style="flex:1;min-width:0">
-        <div class="analysis-label">✦ transcript analysis</div>
+        <div class="analysis-label">✦ AI coach</div>
         <div class="analysis-value live-text">${snippet}</div>
       </div>
       ${topicTags ? `<div class="analysis-divider"></div><div class="analysis-section"><div class="analysis-label">Topics</div><div class="topic-tags">${topicTags}</div></div>` : ''}`;
 
-    // Mood bars
     ['energy','curiosity','humor','depth'].forEach(k => {
       const v = d[k];
       if (typeof v !== 'number') return;
