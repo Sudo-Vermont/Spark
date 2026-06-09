@@ -102,6 +102,35 @@ const AppState = {
     els.waitingSub.textContent   = 'Looking for someone to connect you with';
   });
 
+  // ICE servers — multiple STUN servers across regions for global connectivity
+  const ICE_CONFIG = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      { urls: 'stun:stun.nextcloud.com:443' },
+      { urls: 'stun:stun.relay.metered.ca:80' },
+      {
+        urls: 'turn:global.relay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:global.relay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:global.relay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      }
+    ]
+  };
+
   // ── PeerJS — random matchmaking ──
   // Strategy: try to claim one of N "waiting" slots.
   // If a slot is free → register and wait for a caller (waiter role).
@@ -119,7 +148,7 @@ const AppState = {
     const waitId = slotId(slots[idx]);
     const myId   = `spark-caller-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    peer = new Peer(waitId, { debug: 1 });
+    peer = new Peer(waitId, { debug: 1, config: ICE_CONFIG });
 
     peer.on('open', () => {
       console.log('Waiting on slot:', waitId);
