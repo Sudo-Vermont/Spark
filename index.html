@@ -80,7 +80,11 @@
 
     <!-- Controls -->
     <div class="controls">
-      <button class="btn-icon" id="muteBtn" title="Mute mic">🎤</button>
+      <div class="mic-selector-wrap">
+        <button class="btn-icon" id="muteBtn" title="Mute mic">🎤</button>
+        <button class="btn-icon btn-mic-pick" id="micPickBtn" title="Change microphone">▾</button>
+        <div class="mic-dropdown" id="micDropdown"></div>
+      </div>
       <button class="btn-icon" id="camBtn" title="Toggle camera">📷</button>
       <button class="btn-end" id="endBtn">End Chat</button>
       <button class="btn-icon" id="analyzeNowBtn" title="Analyze now">✦</button>

@@ -29,6 +29,8 @@ const AppState = {
     sessionTimer:     $('sessionTimer'),
     endBtn:           $('endBtn'),
     muteBtn:          $('muteBtn'),
+    micPickBtn:       $('micPickBtn'),
+    micDropdown:      $('micDropdown'),
     camBtn:           $('camBtn'),
     youInput:         $('youInput'),
     youSendBtn:       $('youSendBtn'),
@@ -49,6 +51,7 @@ const AppState = {
   let sessionStart = null;
   let muted = false;
   let camOff = false;
+  let activeMicId = null;
 
   // Matchmaking slot IDs — try each in random order so load spreads across slots
   const SLOTS = 8;
@@ -228,7 +231,8 @@ const AppState = {
     els.remoteVideo.addEventListener('loadedmetadata', doConnect, { once: true });
     setTimeout(doConnect, 1500);
 
-    SpeechManager.startPartner(remoteStream);
+    // Defer AudioContext creation to avoid blocking video rendering on connect
+    setTimeout(() => SpeechManager.startPartner(remoteStream), 1000);
   }
 
   // ── Connected ──
@@ -256,7 +260,7 @@ const AppState = {
     els.transcriptContainer.innerHTML = '<div class="transcript-empty" id="txEmpty">conversation started — start talking!</div>';
 
     if (SpeechManager.isSupported()) {
-      SpeechManager.startYours();
+      setTimeout(() => { SpeechManager.startYours(); }, 600);
       els.speechStatus.textContent = '● auto-transcribing';
     }
 
@@ -280,8 +284,20 @@ const AppState = {
     els.remoteVideo.srcObject = null;
     els.remoteOverlay.style.display = 'flex';
     els.waitingTitle.textContent = reason || 'Disconnected';
-    els.waitingSub.textContent   = 'Reload the page to find a new match';
+    els.waitingSub.textContent   = '';
     els.strangerLabel.style.display = 'none';
+
+    // Show "Start New Chat" button
+    let newChatBtn = $('newChatBtn');
+    if (!newChatBtn) {
+      newChatBtn = document.createElement('button');
+      newChatBtn.id = 'newChatBtn';
+      newChatBtn.className = 'btn-new-chat';
+      newChatBtn.textContent = '🔁 Start New Chat';
+      newChatBtn.addEventListener('click', startNewChat);
+      els.remoteOverlay.querySelector('.waiting-state').appendChild(newChatBtn);
+    }
+    newChatBtn.style.display = 'inline-flex';
 
     els.youInput.disabled   = true;
     els.youSendBtn.disabled = true;
@@ -299,6 +315,29 @@ const AppState = {
       if (p) p.textContent = '—';
     });
   }
+
+  function startNewChat() {
+    const newChatBtn = $('newChatBtn');
+    if (newChatBtn) newChatBtn.style.display = 'none';
+
+    AppState.transcript = [];
+    GeminiCoach.resetTopics();
+    GeminiCoach.setScanning('waiting to connect');
+
+    els.waitingTitle.textContent = 'Finding a match…';
+    els.waitingSub.textContent   = '';
+    els.transcriptContainer.innerHTML = '<div class="transcript-empty">transcript appears when connected</div>';
+
+    setStatus('searching');
+    initPeer();
+  }
+
+  // Clean up peer connections when the tab is closed
+  window.addEventListener('beforeunload', () => {
+    if (call)  { try { call.close();  } catch(e){} }
+    if (conn)  { try { conn.close();  } catch(e){} }
+    if (peer)  { try { peer.destroy(); } catch(e){} }
+  });
 
   // ── Speech ──
   function initSpeech() {
@@ -332,6 +371,37 @@ const AppState = {
       els.muteBtn.classList.toggle('active', muted);
     });
 
+    // Mic picker
+    const micPickBtn  = $('micPickBtn');
+    const micDropdown = $('micDropdown');
+
+    micPickBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (micDropdown.classList.contains('open')) {
+        micDropdown.classList.remove('open');
+        return;
+      }
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const mics = devices.filter(d => d.kind === 'audioinput');
+      const currentId = localStream?.getAudioTracks()[0]?.getSettings()?.deviceId;
+      micDropdown.innerHTML = mics.map(m => {
+        const label = m.label || `Microphone ${mics.indexOf(m) + 1}`;
+        const sel   = m.deviceId === currentId ? ' selected' : '';
+        return `<div class="mic-option${sel}" data-id="${m.deviceId}">${label}</div>`;
+      }).join('') || '<div class="mic-option" style="pointer-events:none;opacity:0.5">No microphones found</div>';
+      micDropdown.classList.add('open');
+    });
+
+    micDropdown.addEventListener('click', async (e) => {
+      const opt = e.target.closest('.mic-option');
+      if (!opt || !opt.dataset.id) return;
+      micDropdown.classList.remove('open');
+      await switchMic(opt.dataset.id);
+    });
+
+    document.addEventListener('click', () => micDropdown.classList.remove('open'));
+    micDropdown.addEventListener('click', e => e.stopPropagation());
+
     els.camBtn.addEventListener('click', () => {
       camOff = !camOff;
       localStream?.getVideoTracks().forEach(t => t.enabled = !camOff);
@@ -347,6 +417,26 @@ const AppState = {
     els.youMicBtn.addEventListener('touchstart', startPTT, { passive: true });
     els.youMicBtn.addEventListener('mouseup',    endPTT);
     els.youMicBtn.addEventListener('touchend',   endPTT);
+  }
+
+  async function switchMic(deviceId) {
+    if (!localStream) return;
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: deviceId } }, video: false });
+      const newTrack  = newStream.getAudioTracks()[0];
+      const oldTrack  = localStream.getAudioTracks()[0];
+      if (oldTrack) { oldTrack.stop(); localStream.removeTrack(oldTrack); }
+      localStream.addTrack(newTrack);
+      if (!muted) newTrack.enabled = true;
+      activeMicId = deviceId;
+      // Hot-swap in active call without renegotiation
+      if (call?.peerConnection) {
+        const sender = call.peerConnection.getSenders().find(s => s.track?.kind === 'audio');
+        if (sender) sender.replaceTrack(newTrack);
+      }
+    } catch (e) {
+      console.warn('Mic switch failed:', e);
+    }
   }
 
   function submitYours() {
