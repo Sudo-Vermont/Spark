@@ -67,7 +67,9 @@ const AppState = {
 
   // ── API key — localStorage with fallback to config.js ──
   function getApiKey() {
-    return localStorage.getItem('spark_groq_key') || null;
+    return localStorage.getItem('spark_groq_key') ||
+      (typeof SPARK_CONFIG !== 'undefined' ? SPARK_CONFIG.groqApiKey : null) ||
+      null;
   }
 
   function saveApiKey(key) {

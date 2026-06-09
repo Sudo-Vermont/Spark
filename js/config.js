@@ -4,5 +4,5 @@
 //
 // Get a free key at: https://aistudio.google.com/app/apikey
 const SPARK_CONFIG = {
-  geminiApiKey: 'AQ.Ab8RN6K4Lvwfpk5Qq_tNjTUuNV93aZ2oMIT5jMR3_tyhgr1FBQ'
+  groqApiKey: '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'
 };
