@@ -190,7 +190,15 @@ const AppState = {
   // ── Remote stream received ──
   function onRemoteStream(remoteStream) {
     els.remoteVideo.srcObject = remoteStream;
-    els.remoteVideo.addEventListener('loadedmetadata', onConnected, { once: true });
+    els.remoteVideo.play().catch(() => {});
+
+    // Fire onConnected as soon as possible — loadedmetadata is unreliable
+    // on some browsers/stream types, so use a 1.5s fallback too.
+    let connected = false;
+    const doConnect = () => { if (!connected) { connected = true; onConnected(); } };
+    els.remoteVideo.addEventListener('loadedmetadata', doConnect, { once: true });
+    setTimeout(doConnect, 1500);
+
     SpeechManager.startPartner(remoteStream);
   }
 

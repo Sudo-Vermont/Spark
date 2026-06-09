@@ -50,6 +50,7 @@ const SpeechManager = (() => {
     if (!supported || !remoteStream || partnerRec) return;
     try {
       const ctx = new AudioContext();
+      ctx.resume().catch(() => {});
       const src = ctx.createMediaStreamSource(remoteStream);
       const dst = ctx.createMediaStreamDestination();
       src.connect(dst);
