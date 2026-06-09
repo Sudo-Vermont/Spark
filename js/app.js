@@ -80,7 +80,7 @@ const AppState = {
 
   // ── Start / setup ──
   els.startBtn.addEventListener('click', async () => {
-    // Camera first — never blocked by API key
+    // Camera + mic — try video+audio, fall back to audio-only
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       els.localVideo.srcObject = localStream;
@@ -88,7 +88,17 @@ const AppState = {
         els.localOverlay.style.display = 'none';
       }, { once: true });
     } catch (e) {
-      console.warn('Camera denied:', e.message);
+      console.warn('Camera+mic failed:', e.message);
+      // Try audio-only fallback
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        els.localOverlay.querySelector('.video-placeholder-text').textContent = 'camera unavailable';
+      } catch (e2) {
+        console.warn('Audio also failed:', e2.message);
+        // Show user-friendly message but keep going (they can still connect)
+        els.localOverlay.querySelector('.video-placeholder-text').textContent = 'no camera or mic found';
+        els.startBtn.textContent = '⚠️ Check camera permissions in browser settings, then try again';
+      }
     }
 
     // API key — optional, coaching silently disabled if missing
@@ -168,7 +178,7 @@ const AppState = {
     const waitId = slotId(slots[idx]);
     const myId   = `spark-caller-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    peer = new Peer(waitId, { debug: 1, config: ICE_CONFIG });
+    peer = new Peer(waitId, { debug: 0, config: ICE_CONFIG });
 
     peer.on('open', () => {
       console.log('Waiting on slot:', waitId);
