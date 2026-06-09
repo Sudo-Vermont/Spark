@@ -53,17 +53,13 @@ const AppState = {
   let camOff = false;
   let activeMicId = null;
 
-  // Matchmaking slot IDs — try each in random order so load spreads across slots
+  // Matchmaking slots — everyone walks them in the SAME order (0,1,2...) so a
+  // waiter parked on any slot is always found by the next searcher. Random
+  // order caused both users to wait on different slots and never meet.
   const SLOTS = 8;
+  const CALL_TIMEOUT_MS = 6000;
+  let searchGen = 0; // bumped to cancel any in-flight search loops
   function slotId(n) { return `spark-match-waiting-${n}`; }
-  function shuffledSlots() {
-    const arr = Array.from({ length: SLOTS }, (_, i) => i);
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-  }
 
   // ── Start / setup ──
   els.startBtn.addEventListener('click', async () => {
@@ -132,45 +128,54 @@ const AppState = {
     ]
   };
 
-  // ── PeerJS — random matchmaking ──
-  // Strategy: try to claim one of N "waiting" slots.
-  // If a slot is free → register and wait for a caller (waiter role).
-  // If a slot is taken → that person is waiting; call them (caller role).
+  // ── PeerJS — matchmaking ──
+  // Walk slots 0..N-1 in order:
+  //  - Slot free  → claim it and wait for a caller.
+  //  - Slot taken → its occupant is waiting; call them.
+  //  - Occupant busy or dead → skip to the next slot, wrap around after a pause.
   function initPeer() {
-    trySlots(shuffledSlots(), 0);
+    searchGen++;
+    searchSlot(0, searchGen);
   }
 
-  function trySlots(slots, idx) {
-    if (idx >= slots.length) {
-      // All slots busy — retry after a short pause
-      setTimeout(() => trySlots(shuffledSlots(), 0), 2000);
+  function searchSlot(idx, gen) {
+    if (gen !== searchGen) return; // search was cancelled
+    if (idx >= SLOTS) {
+      setTimeout(() => searchSlot(0, gen), 1500);
       return;
     }
-    const waitId = slotId(slots[idx]);
-    const myId   = `spark-caller-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
+    const waitId = slotId(idx);
     peer = new Peer(waitId, { debug: 0, config: ICE_CONFIG });
+    let claimed = false;
 
     peer.on('open', () => {
+      claimed = true;
       console.log('Waiting on slot:', waitId);
-      // We are now the waiter — sit and listen for an incoming call
     });
 
     peer.on('error', (err) => {
+      if (gen !== searchGen) return;
       if (err.type === 'unavailable-id') {
         // Slot taken — someone is waiting there; call them
-        peer.destroy();
-        callWaiter(waitId, myId);
+        try { peer.destroy(); } catch(e){}
+        callWaiter(waitId, idx, gen);
+      } else if (!claimed) {
+        console.warn('PeerJS error while claiming:', err.type);
+        try { peer.destroy(); } catch(e){}
+        setTimeout(() => searchSlot(0, gen), 1500);
       } else {
-        console.warn('PeerJS error:', err);
-        peer.destroy();
-        trySlots(slots, idx + 1);
+        console.warn('PeerJS error while waiting:', err.type);
       }
     });
 
     // Waiter: incoming call
     peer.on('call', (incomingCall) => {
-      console.log('Matched! Incoming call from caller');
+      if (AppState.connected || call) {
+        // Already matched — reject so the prober moves on
+        try { incomingCall.close(); } catch(e){}
+        return;
+      }
+      console.log('Matched! Incoming call');
       call = incomingCall;
       call.answer(localStream || new MediaStream());
       call.on('stream', onRemoteStream);
@@ -178,34 +183,64 @@ const AppState = {
       call.on('error', (e) => console.warn('Call error:', e));
     });
 
-    // Waiter: data channel
+    // Waiter: data channel (callers also use it to detect we're busy)
     peer.on('connection', (dc) => {
+      if (AppState.connected || call) {
+        dc.on('open', () => {
+          try { dc.send({ type: 'busy' }); } catch(e){}
+          setTimeout(() => { try { dc.close(); } catch(e){} }, 500);
+        });
+        return;
+      }
       conn = dc;
       dc.on('data', onDataReceived);
     });
   }
 
-  function callWaiter(waitId, myId) {
-    peer = new Peer(myId, { debug: 1 });
+  function callWaiter(waitId, slotIdx, gen) {
+    const myId = `spark-caller-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    peer = new Peer(myId, { debug: 0, config: ICE_CONFIG });
+
+    let gotStream = false;
+    let settled = false;
+    let timer = null;
+
+    const giveUp = (why) => {
+      if (settled || gotStream || gen !== searchGen) return;
+      settled = true;
+      clearTimeout(timer);
+      console.log(`Slot ${waitId} ${why} — trying next slot`);
+      try { peer.destroy(); } catch(e){}
+      call = null; conn = null;
+      searchSlot(slotIdx + 1, gen);
+    };
 
     peer.on('open', () => {
-      console.log('Matched! Calling waiter:', waitId);
+      if (gen !== searchGen) return;
+      console.log('Slot taken — calling waiter:', waitId);
 
       conn = peer.connect(waitId);
-      conn.on('open', () => console.log('Data channel open'));
-      conn.on('data', onDataReceived);
+      conn.on('data', (d) => {
+        if (d && d.type === 'busy') { giveUp('is busy'); return; }
+        onDataReceived(d);
+      });
 
       call = peer.call(waitId, localStream || new MediaStream());
-      call.on('stream', onRemoteStream);
-      call.on('close', () => onDisconnected('partner left'));
-      call.on('error', (e) => console.warn('Call error:', e));
+      timer = setTimeout(() => giveUp('timed out'), CALL_TIMEOUT_MS);
+      call.on('stream', (rs) => {
+        gotStream = true;
+        clearTimeout(timer);
+        console.log('Matched!');
+        onRemoteStream(rs);
+      });
+      call.on('close', () => { gotStream ? onDisconnected('partner left') : giveUp('rejected the call'); });
+      call.on('error', () => giveUp('call errored'));
     });
 
     peer.on('error', (err) => {
-      console.warn('Caller peer error:', err);
-      // Waiter may have left — retry from scratch
-      peer.destroy();
-      setTimeout(() => trySlots(shuffledSlots(), 0), 1500);
+      if (gotStream) { console.warn('Caller peer error:', err.type); return; }
+      // peer-unavailable = waiter left between our claim attempt and the call
+      giveUp(err.type || 'peer error');
     });
   }
 
@@ -269,6 +304,7 @@ const AppState = {
 
   // ── Disconnected ──
   function onDisconnected(reason) {
+    searchGen++; // cancel any pending slot-search retries
     AppState.connected = false;
     GeminiCoach.stopPeriodic();
     SpeechManager.stopAll();
