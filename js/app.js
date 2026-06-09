@@ -65,13 +65,27 @@ const AppState = {
     return arr;
   }
 
+  // ── API key — localStorage with fallback to config.js ──
+  function getApiKey() {
+    const stored = localStorage.getItem('spark_gemini_key');
+    if (stored) return stored;
+    if (typeof SPARK_CONFIG !== 'undefined' && SPARK_CONFIG.geminiApiKey &&
+        SPARK_CONFIG.geminiApiKey !== 'YOUR_GEMINI_API_KEY_HERE') {
+      return SPARK_CONFIG.geminiApiKey;
+    }
+    return null;
+  }
+
+  function saveApiKey(key) { localStorage.setItem('spark_gemini_key', key); }
+
   // ── Start / setup ──
   els.startBtn.addEventListener('click', async () => {
-    // Load API key from config.js
-    const apiKey = (typeof SPARK_CONFIG !== 'undefined') ? SPARK_CONFIG.geminiApiKey : null;
-    if (!apiKey || apiKey === 'YOUR_GEMINI_API_KEY_HERE') {
-      alert('Please add your Gemini API key to js/config.js');
-      return;
+    let apiKey = getApiKey();
+    if (!apiKey) {
+      apiKey = prompt('Enter your Gemini API key to enable AI coaching:\n(Get one free at https://aistudio.google.com/app/apikey)');
+      if (!apiKey || !apiKey.trim()) { return; }
+      apiKey = apiKey.trim();
+      saveApiKey(apiKey);
     }
 
     GeminiCoach.setKey(apiKey);
@@ -215,7 +229,7 @@ const AppState = {
     if (data.type === 'transcript') {
       addTranscriptLine('them', data.text);
       GeminiCoach.showTyping(false);
-      GeminiCoach.triggerAnalysis(AppState.transcript, els.remoteVideo);
+      GeminiCoach.triggerAnalysis(AppState.transcript);
     }
   }
 
@@ -264,7 +278,7 @@ const AppState = {
       els.speechStatus.textContent = '● auto-transcribing';
     }
 
-    GeminiCoach.startPeriodic(AppState.transcript, els.remoteVideo, 14000);
+    GeminiCoach.startPeriodic(AppState.transcript, 16000);
     GeminiCoach.showCoachUI();
     if (els.moodNote) els.moodNote.textContent = 'live analysis running...';
   }
@@ -341,19 +355,11 @@ const AppState = {
 
   // ── Speech ──
   function initSpeech() {
-    SpeechManager.init(
-      (text) => {
-        if (!AppState.connected) return;
-        addTranscriptLine('you', text);
-        GeminiCoach.triggerAnalysis(AppState.transcript, els.remoteVideo);
-      },
-      (text) => {
-        if (!AppState.connected) return;
-        GeminiCoach.showTyping(false);
-        addTranscriptLine('them', text);
-        GeminiCoach.triggerAnalysis(AppState.transcript, els.remoteVideo);
-      }
-    );
+    SpeechManager.init((text) => {
+      if (!AppState.connected) return;
+      addTranscriptLine('you', text);
+      GeminiCoach.triggerAnalysis(AppState.transcript);
+    });
     if (!SpeechManager.isSupported()) {
       els.speechStatus.textContent = '(use Chrome for auto-transcription)';
       els.youMicBtn.style.display = 'none';
@@ -446,7 +452,7 @@ const AppState = {
     addTranscriptLine('you', text);
     // Relay to partner via data channel
     if (conn?.open) conn.send({ type: 'transcript', text });
-    GeminiCoach.triggerAnalysis(AppState.transcript, els.remoteVideo);
+    GeminiCoach.triggerAnalysis(AppState.transcript);
   }
 
   let pttActive = false;
@@ -462,7 +468,7 @@ const AppState = {
     if (text && AppState.connected) {
       addTranscriptLine('you', text);
       if (conn?.open) conn.send({ type: 'transcript', text });
-      GeminiCoach.triggerAnalysis(AppState.transcript, els.remoteVideo);
+      GeminiCoach.triggerAnalysis(AppState.transcript);
     }
   }
   function endPTT() { pttActive = false; els.youMicBtn.classList.remove('recording'); }
@@ -470,6 +476,8 @@ const AppState = {
   // ── Transcript ──
   function addTranscriptLine(who, text) {
     AppState.transcript.push({ who, text, ts: Date.now() });
+    // Cap in-memory transcript to avoid unbounded growth
+    if (AppState.transcript.length > 50) AppState.transcript.splice(0, 10);
     const empty = $('txEmpty');
     if (empty) empty.remove();
     const line = document.createElement('div');
