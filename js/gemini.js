@@ -2,9 +2,13 @@
 
 const GeminiCoach = (() => {
   let analysisTimer = null;
+  let moodTimer      = null;
   let detectedTopics = new Set();
   let coachVisible   = false;
   let faceReady      = false;
+  let lastPartnerMood = null; // latest smoothed face reading — feeds conversation mood
+
+  const clamp100 = v => Math.max(0, Math.min(100, v));
 
   const $ = id => document.getElementById(id);
 
@@ -78,12 +82,15 @@ const GeminiCoach = (() => {
   }
 
   function resetPartnerMood() {
+    lastPartnerMood = null;
     const e = $('partnerMoodEmoji'), l = $('partnerMoodLabel'), c = $('partnerMoodConf');
     if (e) e.textContent = '—';
     if (l) l.textContent = 'not connected';
     if (c) c.textContent = '';
     setBar('fm-smile', 'fv-smile', 0);
     setBar('fm-alert', 'fv-alert', 0);
+    const note = $('moodNote');
+    if (note) note.textContent = 'connect to analyze mood';
   }
 
   function startPeriodic(transcriptRef, intervalMs = 8000) {
@@ -91,27 +98,29 @@ const GeminiCoach = (() => {
     // Read the transcript fresh each tick — AppState.transcript gets reassigned on reconnect
     setTimeout(() => runAnalysis(getTranscript()), 3000);
     analysisTimer = setInterval(() => runAnalysis(getTranscript()), intervalMs);
+    // Fast loop: partner mood + conversation mood refresh every 3s so they feel live
+    moodTimer = setInterval(async () => {
+      await analyzePartnerFace();
+      computeMoodBars(getTranscript());
+    }, 3000);
   }
 
   function stopPeriodic() {
     if (analysisTimer) { clearInterval(analysisTimer); analysisTimer = null; }
+    if (moodTimer)     { clearInterval(moodTimer);     moodTimer = null; }
   }
 
   // ── Core analysis ──
   async function runAnalysis(transcript) {
+    await analyzePartnerFace(); // first, so mood bars use a fresh face reading
     analyzeTranscript(transcript);
+    computeMoodBars(transcript);
     await analyzeFace();
-    await analyzePartnerFace();
   }
 
   function analyzeTranscript(transcript) {
     const msgs = transcript || [];
     if (msgs.length === 0) return;
-
-    // Count speaker balance
-    const youCount  = msgs.filter(m => m.who === 'you').length;
-    const themCount = msgs.filter(m => m.who === 'them').length;
-    const total     = youCount + themCount;
 
     // Sentiment from last 8 messages
     const recentText = msgs.slice(-8).map(m => m.text.toLowerCase()).join(' ');
@@ -148,21 +157,44 @@ const GeminiCoach = (() => {
         </div>`;
     }
 
-    // Update mood bars from message counts + sentiment
-    const energy    = Math.min(100, Math.round((total / 20) * 100));
-    const curiosity = Math.min(100, msgs.filter(m => m.text.includes('?')).length * 20);
-    const humor     = Math.min(100, words.filter(w => ['haha','lol','lmao','funny','joke','hahaha'].includes(w)).length * 25);
-    const depth     = Math.min(100, Math.round(msgs.reduce((s, m) => s + m.text.split(' ').length, 0) / Math.max(1, total) * 5));
-    updateMoodBars({ energy, curiosity, humor, depth });
-
     // Re-deal questions only when detected topics change
     updateQuestions(foundTopics);
+  }
+
+  // ── Conversation mood: blends chat/speech signals with the partner's face,
+  //    so the bars work even when the transcript is empty (no speech support) ──
+  function computeMoodBars(transcript) {
+    if (typeof AppState === 'undefined' || !AppState.connected) return;
+    const msgs = transcript || [];
+    const now  = Date.now();
+    const recent  = msgs.filter(m => now - (m.ts || 0) < 120000); // last 2 minutes
+    const allText = msgs.map(m => m.text.toLowerCase()).join(' ');
+    const face = lastPartnerMood;
+
+    // energy — how active the conversation is right now + how alert the partner looks
+    const energy = clamp100(Math.round(recent.length * 14 + (face ? face.alertness * 0.35 : 0)));
+
+    // curiosity — questions being asked
+    const curiosity = clamp100(msgs.filter(m => m.text.includes('?')).length * 20);
+
+    // humor — laughter in the conversation + an actual smile on camera
+    const laughs     = (allText.match(/\b(?:ha){2,}h?\b|\bl+o+l\b|\blmao\b|\blmfao\b|\brofl\b|😂|🤣/g) || []).length;
+    const funnyWords = (allText.match(/\bfunny\b|\bjoke\b|\bhilarious\b/g) || []).length;
+    const smileBonus = face && face.smileBar > 45 ? face.smileBar - 45 : 0;
+    const humor = clamp100(Math.round(laughs * 20 + funnyWords * 10 + smileBonus * 1.2));
+
+    // depth — average message length
+    const totalWords = msgs.reduce((s, m) => s + m.text.split(/\s+/).filter(Boolean).length, 0);
+    const depth = msgs.length ? clamp100(Math.round((totalWords / msgs.length) * 6)) : 0;
+
+    updateMoodBars({ energy, curiosity, humor, depth });
   }
 
   async function analyzePartnerFace() {
     const videoEl = document.getElementById('remoteVideo');
     if (!faceReady || !videoEl) return;
     const m = await FaceAnalyzer.analyzeMood(videoEl);
+    lastPartnerMood = m;
 
     const emojiEl = $('partnerMoodEmoji');
     const labelEl = $('partnerMoodLabel');

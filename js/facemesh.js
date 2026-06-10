@@ -167,6 +167,21 @@ const FaceAnalyzer = (() => {
     return { mood, emoji, confidence, smileBar, alertness };
   }
 
+  // ── Mood smoothing: a blink or single odd frame shouldn't flip the mood ──
+  let moodHist = [];
+  function smoothMood(raw) {
+    if (!raw) { moodHist = []; return null; }
+    moodHist.push(raw);
+    if (moodHist.length > 5) moodHist.shift();
+    const avg = k => Math.round(moodHist.reduce((s, m) => s + m[k], 0) / moodHist.length);
+    // Majority vote on the mood label across recent readings
+    const counts = {};
+    moodHist.forEach(m => { counts[m.mood] = (counts[m.mood] || 0) + 1; });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+    const rep = [...moodHist].reverse().find(m => m.mood === top);
+    return { mood: top, emoji: rep.emoji, confidence: avg('confidence'), smileBar: avg('smileBar'), alertness: avg('alertness') };
+  }
+
   // ── Shared helper: create a FaceMesh instance ──
   function makeMesh(onResultsFn) {
     if (typeof FaceMesh === 'undefined') return null;
@@ -192,9 +207,10 @@ const FaceAnalyzer = (() => {
     mesh = makeMesh((r) => {
       lastMetrics = r.multiFaceLandmarks?.length ? computeMetrics(r.multiFaceLandmarks[0]) : null;
     });
-    // Instance 2: remote partner mood
+    // Instance 2: remote partner mood (smoothed across recent frames)
     moodMesh = makeMesh((r) => {
-      lastMood = r.multiFaceLandmarks?.length ? detectMood(r.multiFaceLandmarks[0]) : null;
+      const raw = r.multiFaceLandmarks?.length ? detectMood(r.multiFaceLandmarks[0]) : null;
+      lastMood = smoothMood(raw);
     });
     ready = true;
   }

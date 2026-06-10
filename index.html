@@ -167,6 +167,25 @@
             <span class="mood-pct" id="pct-depth">—</span>
           </div>
         </div>
+        <div class="mood-divider"></div>
+        <div class="mood-sub-label">🤔 Partner's Mood</div>
+        <div class="partner-mood-display" id="partnerMoodDisplay">
+          <div class="partner-mood-row">
+            <span class="partner-mood-emoji" id="partnerMoodEmoji">—</span>
+            <span class="partner-mood-label" id="partnerMoodLabel">not connected</span>
+            <span class="partner-mood-conf" id="partnerMoodConf"></span>
+          </div>
+          <div class="face-metric-row">
+            <span class="face-metric-name">Smile</span>
+            <div class="face-metric-bar-track"><div class="face-metric-bar" id="fm-smile" style="background:var(--teal)"></div></div>
+            <span class="face-metric-val" id="fv-smile">—</span>
+          </div>
+          <div class="face-metric-row">
+            <span class="face-metric-name">Alertness</span>
+            <div class="face-metric-bar-track"><div class="face-metric-bar" id="fm-alert" style="background:var(--amber)"></div></div>
+            <span class="face-metric-val" id="fv-alert">—</span>
+          </div>
+        </div>
         <p class="mood-note" id="moodNote">connect to analyze mood</p>
       </div>
     </div>
@@ -236,28 +255,6 @@
           <span class="face-metric-val" id="fv-golden">—</span>
         </div>
         <div class="face-overall" id="faceOverall">no face detected</div>
-      </div>
-
-      <div class="coach-divider"></div>
-
-      <!-- Partner Mood -->
-      <div class="coach-section-label">🤔 Partner's Mood</div>
-      <div class="partner-mood-display" id="partnerMoodDisplay">
-        <div class="partner-mood-row">
-          <span class="partner-mood-emoji" id="partnerMoodEmoji">—</span>
-          <span class="partner-mood-label" id="partnerMoodLabel">not connected</span>
-          <span class="partner-mood-conf" id="partnerMoodConf"></span>
-        </div>
-        <div class="face-metric-row">
-          <span class="face-metric-name">Smile</span>
-          <div class="face-metric-bar-track"><div class="face-metric-bar" id="fm-smile" style="background:var(--teal)"></div></div>
-          <span class="face-metric-val" id="fv-smile">—</span>
-        </div>
-        <div class="face-metric-row">
-          <span class="face-metric-name">Alertness</span>
-          <div class="face-metric-bar-track"><div class="face-metric-bar" id="fm-alert" style="background:var(--amber)"></div></div>
-          <span class="face-metric-val" id="fv-alert">—</span>
-        </div>
       </div>
 
       <!-- Topics (hidden — still tracked in background for analysis) -->
