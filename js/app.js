@@ -288,6 +288,9 @@ const AppState = {
     }
     if (data.type === 'music') {
       MusicSync.setPartnerTrack(data.track || null);
+      // On mobile the music card lives in the closed sheet — show a dot on the toggle
+      const st = $('sidebarToggle');
+      if (st && !$('sidebar').classList.contains('open')) st.classList.add('notify');
     }
     if (data.type === 'music-sync') {
       MusicSync.applySync(data);
@@ -498,6 +501,19 @@ const AppState = {
 
     document.addEventListener('click', () => micDropdown.classList.remove('open'));
     micDropdown.addEventListener('click', e => e.stopPropagation());
+
+    // Mobile bottom sheet (music + mood)
+    const sidebarToggle = $('sidebarToggle');
+    const sheetBackdrop = $('sheetBackdrop');
+    if (sidebarToggle) sidebarToggle.addEventListener('click', () => {
+      const open = els.sidebar.classList.toggle('open');
+      sidebarToggle.classList.remove('notify');
+      if (sheetBackdrop) sheetBackdrop.classList.toggle('show', open);
+    });
+    if (sheetBackdrop) sheetBackdrop.addEventListener('click', () => {
+      els.sidebar.classList.remove('open');
+      sheetBackdrop.classList.remove('show');
+    });
 
     els.camBtn.addEventListener('click', () => {
       camOff = !camOff;

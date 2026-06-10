@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Spark — AI Video Chat</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -89,6 +89,7 @@
       <button class="btn-end" id="endBtn">End Chat</button>
       <button class="btn-icon" id="analyzeNowBtn" title="Analyze now">✦</button>
       <button class="btn-icon" id="watchBtn" title="Watch together">📺</button>
+      <button class="btn-icon mobile-only" id="sidebarToggle" title="Music &amp; mood">🎵</button>
     </div>
 
     <!-- Your input -->
@@ -102,7 +103,8 @@
     </div>
   </div>
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR (slide-up sheet on mobile) -->
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
   <div class="sidebar" id="sidebar" style="display:none">
 
     <div class="sidebar-card" style="display:none">

@@ -103,7 +103,7 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 
 /* CONTROLS */
 .controls { margin-top:14px; display:flex; align-items:center; justify-content:center; gap:10px; flex-shrink:0; }
-.btn-icon { width:40px; height:40px; padding:0; border-radius:50%; background:var(--surface2); color:var(--text2); border:1px solid var(--border); font-size:16px; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; justify-content:center; }
+.btn-icon { position:relative; width:40px; height:40px; padding:0; border-radius:50%; background:var(--surface2); color:var(--text2); border:1px solid var(--border); font-size:16px; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; justify-content:center; }
 .btn-icon:hover { background:var(--surface3); color:var(--text); }
 .btn-icon.active { color:var(--accent); border-color:rgba(124,106,247,0.3); background:rgba(124,106,247,0.1); }
 .btn-end { padding:10px 24px; background:transparent; border:1px solid rgba(248,113,113,0.25); border-radius:var(--r-sm); color:var(--danger); font-family:var(--font); font-size:14px; font-weight:600; cursor:pointer; transition:all 0.18s; }
@@ -259,66 +259,115 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .watch-unlock-btn { display: block; width: 100%; padding: 10px; background: rgba(124,106,247,0.12); border: 1px solid rgba(124,106,247,0.25); border-radius: 0; color: var(--accent2); font-family: var(--mono); font-size: 13px; cursor: pointer; text-align: center; transition: background 0.15s; }
 .watch-unlock-btn:hover { background: rgba(124,106,247,0.22); }
 
+/* Mobile-only elements (sheet toggle button, backdrop) — hidden on desktop */
+.mobile-only { display:none; }
+.sheet-backdrop { display:none; }
+.btn-icon.notify::after { content:''; position:absolute; top:3px; right:3px; width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent-glow); animation:pulse 1.2s ease-in-out infinite; }
+
 /* ───────────── MOBILE (phones) ───────────── */
 @media (max-width: 768px) {
   body { height:100dvh; }
 
-  /* Header — tighter */
-  header { padding:0 14px; height:50px; }
-  .logo { font-size:17px; gap:8px; }
-  .header-right { gap:8px; }
-  .status-badge { padding:5px 10px; font-size:11px; }
-  .session-timer { padding:4px 10px; font-size:12px; }
+  /* Header — compact */
+  header { padding:0 12px; height:48px; }
+  .logo { font-size:16px; gap:7px; }
+  .header-right { gap:6px; }
+  .status-badge { padding:4px 9px; font-size:10px; }
+  .session-timer { padding:4px 9px; font-size:11px; }
 
-  /* Single scrollable column instead of side-by-side */
-  .main { flex-direction:column; overflow-y:auto; -webkit-overflow-scrolling:touch; }
-  .video-area { flex:none; padding:12px; overflow:visible; }
-
-  /* Partner video full width, your camera as small PiP bubble */
-  .videos-row { display:block; position:relative; height:52vh; min-height:300px; flex:none; }
-  #remoteCard { width:100%; height:100%; }
-  #localCard {
-    position:absolute; bottom:10px; right:10px; z-index:6;
-    width:100px; height:140px;
-    border:2px solid var(--border2); border-radius:10px;
-    box-shadow:0 4px 20px rgba(0,0,0,0.55);
+  /* App layout: everything fits one screen, no page scrolling */
+  .main { flex-direction:column; overflow:hidden; }
+  .video-area {
+    flex:1; min-height:0; overflow:hidden;
+    display:flex; flex-direction:column;
+    padding:10px 10px calc(10px + env(safe-area-inset-bottom));
   }
-  #localCard .video-label { display:none; }
-  #localCard .video-avatar { width:36px; height:36px; font-size:15px; }
-  #localCard .video-placeholder-text { display:none; }
 
-  /* Analysis bar */
-  .analysis-bar { margin-top:10px; padding:9px 12px; gap:12px; min-height:44px; }
+  /* Partner video fills the screen; your camera floats as a bubble */
+  .videos-row { display:block; position:relative; flex:1; min-height:0; }
+  #remoteCard { width:100%; height:100%; }
+  #remoteCard .video-label { bottom:auto; top:12px; left:12px; }
+  #localCard {
+    position:absolute; top:10px; right:10px; z-index:6;
+    width:92px; height:126px;
+    border:2px solid var(--border2); border-radius:12px;
+    box-shadow:0 4px 18px rgba(0,0,0,0.55);
+  }
+  #localCard .video-label,
+  #localCard .video-placeholder-text { display:none; }
+  #localCard .video-avatar { width:34px; height:34px; font-size:14px; }
+
+  /* Coach tips float over the bottom of the video */
+  .analysis-bar {
+    position:relative; z-index:5;
+    margin:-50px 8px 0;
+    background:rgba(10,10,15,0.75); backdrop-filter:blur(12px);
+    border-color:rgba(255,255,255,0.1); border-radius:12px;
+    padding:8px 12px; min-height:42px; gap:12px;
+    overflow-x:auto; -webkit-overflow-scrolling:touch;
+  }
+  .analysis-bar::-webkit-scrollbar { display:none; }
   .analysis-value.live-text { max-width:none; }
 
-  /* Controls — bigger touch targets */
-  .controls { margin-top:10px; gap:8px; }
-  .btn-icon { width:44px; height:44px; font-size:17px; }
+  /* Input sits above the controls; label hidden to reduce clutter */
+  .you-input-row { margin-top:10px; }
+  .you-input-label { display:none; }
+  .you-input { font-size:16px; padding:10px 14px; } /* 16px stops iOS auto-zoom */
+  .you-send-btn, .you-mic-btn { width:44px; height:44px; }
+
+  /* Controls pinned at the bottom — big thumb targets */
+  .controls { order:10; margin-top:10px; gap:8px; }
+  .controls .mobile-only { display:flex; }
+  .btn-icon { width:46px; height:46px; font-size:18px; }
   .btn-mic-pick { width:24px; height:24px; font-size:12px; }
-  .btn-end { padding:11px 18px; font-size:13px; }
+  .btn-end { padding:12px 16px; font-size:13px; }
   .mic-dropdown { max-width:calc(100vw - 24px); }
 
-  /* 16px font stops iOS auto-zoom on focus */
-  .you-input { font-size:16px; padding:10px 14px; }
-  .you-send-btn, .you-mic-btn { width:42px; height:42px; }
+  /* Sidebar becomes a slide-up sheet (music + mood) */
+  .sidebar {
+    position:fixed; left:0; right:0; bottom:0; width:100%;
+    max-height:72vh; overflow-y:auto;
+    background:var(--surface); border-top:1px solid var(--border2);
+    border-radius:18px 18px 0 0;
+    padding:24px 14px calc(16px + env(safe-area-inset-bottom));
+    z-index:160; box-shadow:0 -12px 40px rgba(0,0,0,0.5);
+    transform:translateY(105%);
+    transition:transform 0.32s cubic-bezier(0.16,1,0.3,1);
+  }
+  .sidebar.open { transform:translateY(0); }
+  .sidebar::before {
+    content:''; position:absolute; top:9px; left:50%; transform:translateX(-50%);
+    width:42px; height:4px; border-radius:2px; background:var(--border2);
+  }
+  .sheet-backdrop {
+    display:block; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:150;
+    opacity:0; pointer-events:none; transition:opacity 0.25s ease;
+  }
+  .sheet-backdrop.show { opacity:1; pointer-events:auto; }
 
-  /* Sidebar stacks below, full width */
-  .sidebar { width:100%; flex:none; padding:0 12px 16px; overflow:visible; }
+  /* Music / watch inputs — 16px stops iOS auto-zoom */
+  .music-input, .watch-input { font-size:16px; }
 
-  /* Coach panel becomes a bottom sheet */
+  /* Watch modal: title row on top, URL bar on its own line */
+  .watch-modal { padding:10px; }
+  .watch-modal-top { padding:10px 12px; gap:8px; }
+  .watch-modal-title { order:1; }
+  .watch-close-btn { order:2; margin-left:auto; }
+  .watch-url-row { order:3; flex-basis:100%; }
+
+  /* Coach: toggle docks under the header, panel slides up from the bottom */
+  .coach-toggle { top:56px; bottom:auto; left:12px; right:auto; padding:9px 14px; font-size:12px; }
   .coach-panel { top:auto; bottom:0; left:0; right:0; width:100%; }
   .coach-panel.hidden { transform:translateY(110%); }
-  .coach-panel .coach-card { margin:0 10px 10px; }
-  .coach-body { max-height:55vh; overflow-y:auto; }
-
-  /* Coach toggle floats bottom-right like a FAB */
-  .coach-toggle { top:auto; bottom:18px; right:14px; padding:12px 18px; font-size:13px; }
+  .coach-panel .coach-card { margin:0 8px calc(8px + env(safe-area-inset-bottom)); }
+  .coach-body { max-height:52vh; overflow-y:auto; }
 }
 
 /* Very small phones */
 @media (max-width: 380px) {
-  .videos-row { height:46vh; min-height:260px; }
-  #localCard { width:84px; height:118px; }
-  .btn-end { padding:11px 14px; }
+  #localCard { width:80px; height:110px; }
+  .btn-icon { width:42px; height:42px; font-size:16px; }
+  .btn-end { padding:11px 12px; font-size:12px; }
+  .controls { gap:6px; }
   .session-timer { display:none; }
 }
