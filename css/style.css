@@ -84,6 +84,12 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 @keyframes flash { 0%{opacity:1} 100%{opacity:0} }
 .room-badge { position:absolute; top:12px; left:50%; transform:translateX(-50%); font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.6); background:rgba(0,0,0,0.55); backdrop-filter:blur(8px); padding:4px 12px; border-radius:100px; border:1px solid rgba(255,255,255,0.08); white-space:nowrap; }
 
+/* CHAT OVERLAY — bubbles float over the partner video */
+.chat-overlay { position:absolute; left:12px; right:12px; bottom:44px; z-index:6; display:flex; flex-direction:column; gap:5px; pointer-events:none; }
+.chat-bubble { width:fit-content; max-width:78%; padding:6px 12px; border-radius:14px; font-size:13px; line-height:1.45; word-break:break-word; backdrop-filter:blur(8px); animation:fadeUp 0.25s ease; }
+.chat-bubble.you { align-self:flex-end; background:rgba(124,106,247,0.8); color:#fff; border-bottom-right-radius:4px; }
+.chat-bubble.them { align-self:flex-start; background:rgba(0,0,0,0.65); color:var(--text); border:1px solid rgba(255,255,255,0.12); border-bottom-left-radius:4px; }
+
 /* ANALYSIS BAR */
 .analysis-bar { margin-top:14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:11px 16px; display:flex; align-items:center; gap:18px; flex-shrink:0; overflow:hidden; min-height:48px; }
 .analysis-section { display:flex; flex-direction:column; gap:3px; min-width:0; }
@@ -310,6 +316,9 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
   }
   .analysis-bar::-webkit-scrollbar { display:none; }
   .analysis-value.live-text { max-width:none; }
+
+  /* Chat bubbles sit above the floating coach bar */
+  .chat-overlay { bottom:64px; }
 
   /* Input sits above the controls; label hidden to reduce clutter */
   .you-input-row { margin-top:10px; }

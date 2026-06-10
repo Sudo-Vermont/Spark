@@ -130,10 +130,9 @@ const GeminiCoach = (() => {
     renderTopics();
     updateTopicBtns(foundTopics);
 
-    // Update sentiment in analysis bar
+    // Update sentiment in analysis bar (topics only — never show spoken text)
     const emoji = sentiment === 'positive' ? '😊' : sentiment === 'negative' ? '😕' : '😐';
-    const lastMsg = msgs[msgs.length - 1];
-    const snippet = lastMsg ? `${lastMsg.who === 'you' ? 'You' : 'Them'}: ${lastMsg.text}`.slice(0, 80) : '';
+    const topicTags = [...detectedTopics].slice(0, 4).map(t => `<span class="topic-tag">${esc(t)}</span>`).join('');
 
     const analysisEl = $('analysisContent');
     if (analysisEl) {
@@ -144,8 +143,8 @@ const GeminiCoach = (() => {
         </div>
         <div class="analysis-divider"></div>
         <div class="analysis-section" style="flex:1;min-width:0">
-          <div class="analysis-label">✦ local analysis</div>
-          <div class="analysis-value live-text">${esc(snippet)}</div>
+          <div class="analysis-label">✦ topics</div>
+          <div class="analysis-value">${topicTags ? `<div class="topic-tags">${topicTags}</div>` : '<span class="live-text">listening…</span>'}</div>
         </div>`;
     }
 

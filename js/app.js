@@ -282,8 +282,15 @@ const AppState = {
   function onDataReceived(data) {
     if (!data || typeof data !== 'object') return;
     if (data.type === 'transcript' && typeof data.text === 'string' && data.text.trim()) {
+      // Partner's speech transcription — silent, feeds the coach only
       addTranscriptLine('them', data.text.slice(0, 500));
       GeminiCoach.showTyping(false);
+      GeminiCoach.triggerAnalysis(AppState.transcript);
+    }
+    if (data.type === 'chat' && typeof data.text === 'string' && data.text.trim()) {
+      const text = data.text.slice(0, 500);
+      addChatBubble('them', text);
+      addTranscriptLine('them', text); // silent — feeds the coach
       GeminiCoach.triggerAnalysis(AppState.transcript);
     }
     if (data.type === 'music') {
@@ -339,7 +346,9 @@ const AppState = {
     els.youInput.disabled   = false;
     els.youSendBtn.disabled = false;
     els.youMicBtn.disabled  = false;
-    els.youInput.placeholder = 'Type what you said and press Enter...';
+    els.youInput.placeholder = 'Type a message…';
+    const chatLog = $('chatLog');
+    if (chatLog) chatLog.innerHTML = '';
 
     els.transcriptIndicator.classList.add('live');
     els.transcriptContainer.innerHTML = '<div class="transcript-empty" id="txEmpty">conversation started — start talking!</div>';
@@ -385,6 +394,8 @@ const AppState = {
 
     els.remoteVideo.srcObject = null;
     els.remoteOverlay.style.display = 'flex';
+    const chatLogEl = $('chatLog');
+    if (chatLogEl) chatLogEl.innerHTML = '';
     els.waitingTitle.textContent = reason || 'Disconnected';
     els.waitingSub.textContent   = '';
     els.strangerLabel.style.display = 'none';
@@ -556,10 +567,21 @@ const AppState = {
     const text = els.youInput.value.trim();
     if (!text || !AppState.connected) return;
     els.youInput.value = '';
-    addTranscriptLine('you', text);
-    // Relay to partner via data channel
-    if (conn?.open) conn.send({ type: 'transcript', text });
+    addChatBubble('you', text);
+    addTranscriptLine('you', text); // silent — feeds the coach
+    if (conn?.open) conn.send({ type: 'chat', text });
     GeminiCoach.triggerAnalysis(AppState.transcript);
+  }
+
+  // ── Chat bubbles over the partner video ──
+  function addChatBubble(who, text) {
+    const log = $('chatLog');
+    if (!log) return;
+    const b = document.createElement('div');
+    b.className = 'chat-bubble ' + (who === 'you' ? 'you' : 'them');
+    b.textContent = text; // textContent — no HTML injection
+    log.appendChild(b);
+    while (log.children.length > 8) log.removeChild(log.firstChild);
   }
 
   let pttActive = false;
@@ -573,8 +595,9 @@ const AppState = {
     els.youMicBtn.classList.remove('recording');
     els.speechStatus.textContent = SpeechManager.isSupported() ? '● auto-transcribing' : '';
     if (text && AppState.connected) {
-      addTranscriptLine('you', text);
-      if (conn?.open) conn.send({ type: 'transcript', text });
+      addChatBubble('you', text);
+      addTranscriptLine('you', text); // silent — feeds the coach
+      if (conn?.open) conn.send({ type: 'chat', text });
       GeminiCoach.triggerAnalysis(AppState.transcript);
     }
   }
