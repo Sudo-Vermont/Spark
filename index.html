@@ -88,6 +88,7 @@
       <button class="btn-icon" id="camBtn" title="Toggle camera">📷</button>
       <button class="btn-end" id="endBtn">End Chat</button>
       <button class="btn-icon" id="analyzeNowBtn" title="Analyze now">✦</button>
+      <button class="btn-icon" id="watchBtn" title="Watch together">📺</button>
     </div>
 
     <!-- Your input -->
@@ -268,12 +269,30 @@
   </div>
 </div>
 
+<!-- WATCH TOGETHER MODAL -->
+<div class="watch-modal" id="watchModal" style="display:none">
+  <div class="watch-modal-box">
+    <div class="watch-modal-top">
+      <span class="watch-modal-title">📺 Watch Together</span>
+      <div class="watch-url-row">
+        <input type="text" id="watchInput" class="watch-input" placeholder="Paste a YouTube link to share…" />
+        <button id="watchShareBtn" class="watch-share-btn">Watch</button>
+      </div>
+      <button id="watchCloseBtn" class="watch-close-btn">✕</button>
+    </div>
+    <div id="watchPlayerArea" class="watch-player-area">
+      <div class="watch-idle-msg">Paste a YouTube link above — your partner will see and hear it in sync</div>
+    </div>
+  </div>
+</div>
+
 <button class="coach-toggle" id="coachToggle" style="display:none">✦ Coach</button>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 <script src="js/config.js"></script>
 <script src="js/music.js"></script>
+<script src="js/watch.js"></script>
 <script src="js/speech.js"></script>
 <script src="js/facemesh.js"></script>
 <script src="js/gemini.js"></script>

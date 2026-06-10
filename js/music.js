@@ -9,18 +9,15 @@ const MusicSync = (() => {
   let yoursVideoId = null;
   let isController = false;
 
-  let ytReady = false;
-  let ytReadyCbs = [];
-
   let theirsUnlocked = false;
   let pendingSync = null;
   let syncInterval = null;
 
-  // ── YouTube IFrame API ──
+  // ── YouTube IFrame API (shared global queue — watch.js uses the same callbacks) ──
   function ensureYTApi() {
     return new Promise(resolve => {
-      if (ytReady) { resolve(); return; }
-      ytReadyCbs.push(resolve);
+      if (window.__ytReady) { resolve(); return; }
+      (window.__ytReadyCbs = window.__ytReadyCbs || []).push(resolve);
       if (document.getElementById('yt-api-script')) return;
       const s = document.createElement('script');
       s.id = 'yt-api-script';
@@ -30,9 +27,9 @@ const MusicSync = (() => {
   }
 
   window.onYouTubeIframeAPIReady = () => {
-    ytReady = true;
-    ytReadyCbs.forEach(cb => cb());
-    ytReadyCbs = [];
+    window.__ytReady = true;
+    (window.__ytReadyCbs || []).forEach(cb => cb());
+    window.__ytReadyCbs = [];
   };
 
   // ── URL parsing ──

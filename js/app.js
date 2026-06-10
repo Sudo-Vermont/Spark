@@ -90,6 +90,7 @@ const AppState = {
     // Init modules
     GeminiCoach.init();
     MusicSync.init();
+    WatchSync.init();
     initSpeech();
     initControls();
     initPeer();
@@ -291,6 +292,12 @@ const AppState = {
     if (data.type === 'music-sync') {
       MusicSync.applySync(data);
     }
+    if (data.type === 'watch') {
+      WatchSync.setPartnerVideo(data.track || null);
+    }
+    if (data.type === 'watch-sync') {
+      WatchSync.applySync(data);
+    }
   }
 
   // ── Remote stream received ──
@@ -350,6 +357,12 @@ const AppState = {
     MusicSync.setOnSyncSend((payload) => {
       if (conn?.open) try { conn.send({ type: 'music-sync', ...payload }); } catch(e){}
     });
+    WatchSync.setOnShare((track) => {
+      if (conn?.open) try { conn.send({ type: 'watch', track }); } catch(e){}
+    });
+    WatchSync.setOnSyncSend((payload) => {
+      if (conn?.open) try { conn.send({ type: 'watch-sync', ...payload }); } catch(e){}
+    });
   }
 
   // ── Disconnected ──
@@ -397,6 +410,9 @@ const AppState = {
     MusicSync.resetPartner();
     MusicSync.setOnShare(null);
     MusicSync.setOnSyncSend(null);
+    WatchSync.resetPartner();
+    WatchSync.setOnShare(null);
+    WatchSync.setOnSyncSend(null);
 
     ['energy','curiosity','humor','depth'].forEach(k => {
       const b = $('mood-' + k), p = $('pct-' + k);
