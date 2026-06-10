@@ -114,14 +114,17 @@ const SpotifySync = (() => {
       const r = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      console.log('[Spotify] status:', r.status);
       if (r.status === 401) {
         if (retried) { clearAuth(); updateYoursUI(); return null; }
         const ok = await tryRefresh();
         if (!ok) { clearAuth(); updateYoursUI(); return null; }
         return fetchNowPlaying(true);
       }
-      if (r.status === 204 || !r.ok) return null;
+      if (r.status === 204) { console.log('[Spotify] 204 — nothing active on any device'); return null; }
+      if (!r.ok) { console.log('[Spotify] error response:', r.status); return null; }
       const data = await r.json();
+      console.log('[Spotify] track:', data?.item?.name, '| playing:', data?.is_playing, '| type:', data?.currently_playing_type);
       if (!data?.item) return null;
       return {
         name:     data.item.name,
@@ -130,7 +133,7 @@ const SpotifySync = (() => {
         uri:      data.item.external_urls?.spotify || null,
         isPlaying: data.is_playing,
       };
-    } catch { return null; }
+    } catch(e) { console.log('[Spotify] fetch error:', e); return null; }
   }
 
   // ── Polling ──
