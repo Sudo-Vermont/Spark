@@ -224,7 +224,8 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .music-share-btn { padding: 7px 12px; background: rgba(124,106,247,0.12); border: 1px solid rgba(124,106,247,0.25); border-radius: var(--r-sm); color: var(--accent2); font-family: var(--mono); font-size: 12px; cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
 .music-share-btn:hover { background: rgba(124,106,247,0.22); }
 .music-section-label { font-size: 10px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
-.music-slot { min-height: 32px; display: flex; align-items: center; }
+.music-slot { min-height: 32px; }
+.music-slot .music-idle { display: flex; align-items: center; height: 32px; }
 .music-idle { font-size: 12px; color: var(--text3); font-family: var(--mono); }
 .music-track-row { display: flex; align-items: center; gap: 9px; text-decoration: none; border-radius: var(--r-sm); transition: opacity 0.15s; width: 100%; }
 .music-track-row:hover { opacity: 0.75; }
@@ -232,6 +233,10 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .music-info { flex: 1; min-width: 0; }
 .music-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .music-artist { font-size: 11px; color: var(--text3); font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.music-player-wrap { width: 100%; position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 6px; background: #000; margin-bottom: 4px; }
+.music-player-wrap iframe { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; border: 0; }
+.music-unlock-btn { display: block; width: 100%; margin-top: 6px; padding: 7px; background: rgba(124,106,247,0.12); border: 1px solid rgba(124,106,247,0.25); border-radius: var(--r-sm); color: var(--accent2); font-family: var(--mono); font-size: 12px; cursor: pointer; text-align: center; transition: background 0.15s; }
+.music-unlock-btn:hover { background: rgba(124,106,247,0.22); }
 
 /* ───────────── MOBILE (phones) ───────────── */
 @media (max-width: 768px) {

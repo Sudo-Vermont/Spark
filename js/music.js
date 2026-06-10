@@ -1,35 +1,156 @@
-// music.js — YouTube Music / YouTube link sharing over the data channel (no API key needed)
+// music.js — YouTube IFrame player with real-time sync over the data channel
 
 const MusicSync = (() => {
-  let onShare = null; // set by app.js when a call is active
+  let onShare = null;
+  let onSyncSend = null;
+
+  let yoursPlayer = null;
+  let theirsPlayer = null;
+  let yoursVideoId = null;
+  let isController = false;
+
+  let ytReady = false;
+  let ytReadyCbs = [];
+
+  let theirsUnlocked = false;
+  let pendingSync = null;
+  let syncInterval = null;
+
+  // ── YouTube IFrame API ──
+  function ensureYTApi() {
+    return new Promise(resolve => {
+      if (ytReady) { resolve(); return; }
+      ytReadyCbs.push(resolve);
+      if (document.getElementById('yt-api-script')) return;
+      const s = document.createElement('script');
+      s.id = 'yt-api-script';
+      s.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(s);
+    });
+  }
+
+  window.onYouTubeIframeAPIReady = () => {
+    ytReady = true;
+    ytReadyCbs.forEach(cb => cb());
+    ytReadyCbs = [];
+  };
 
   // ── URL parsing ──
   function extractVideoId(input) {
     try {
       const u = new URL(input.trim());
-      // youtube.com/watch?v=ID  or  music.youtube.com/watch?v=ID
       if (u.hostname.includes('youtube.com')) return u.searchParams.get('v');
-      // youtu.be/ID
       if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('?')[0];
     } catch {}
     return null;
   }
 
-  // ── Metadata via oEmbed (free, no API key, CORS-safe) ──
-  async function fetchInfo(videoId) {
-    try {
-      const url = `https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + videoId)}&format=json`;
-      const r = await fetch(url);
-      if (!r.ok) return null;
-      const d = await r.json();
-      return {
+  // Creates a YT.Player inside the element with the given id (replaces it with an iframe)
+  function makePlayer(elId, videoId, autoplay, controls, onStateChange) {
+    return new Promise(resolve => {
+      if (!document.getElementById(elId)) { resolve(null); return; }
+      new YT.Player(elId, {
         videoId,
-        title:     d.title      || 'Unknown title',
-        author:    d.author_name || '',
-        thumbnail: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
-        url:       `https://music.youtube.com/watch?v=${videoId}`,
-      };
-    } catch { return null; }
+        playerVars: { autoplay, controls, rel: 0, modestbranding: 1, fs: 0, iv_load_policy: 3 },
+        events: {
+          onReady: e => resolve(e.target),
+          onStateChange,
+        }
+      });
+    });
+  }
+
+  // ── Yours (the person who shared — full controls) ──
+  async function createYoursPlayer(videoId) {
+    destroyPlayer('yours');
+    yoursVideoId = videoId;
+    isController = true;
+
+    const el = document.getElementById('musicYours');
+    if (el) el.innerHTML = '<div class="music-player-wrap"><div id="yours-yt"></div></div>';
+
+    await ensureYTApi();
+    yoursPlayer = await makePlayer('yours-yt', videoId, 1, 1, handleYoursStateChange);
+    startPeriodicSync();
+  }
+
+  function handleYoursStateChange(event) {
+    if (!isController || !onSyncSend) return;
+    const time = yoursPlayer ? yoursPlayer.getCurrentTime() : 0;
+    if (event.data === YT.PlayerState.PLAYING) {
+      onSyncSend({ action: 'play', time, videoId: yoursVideoId });
+    } else if (event.data === YT.PlayerState.PAUSED) {
+      onSyncSend({ action: 'pause', time, videoId: yoursVideoId });
+    }
+  }
+
+  function startPeriodicSync() {
+    if (syncInterval) clearInterval(syncInterval);
+    syncInterval = setInterval(() => {
+      if (!isController || !onSyncSend || !yoursPlayer) return;
+      try {
+        if (yoursPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+          onSyncSend({ action: 'sync', time: yoursPlayer.getCurrentTime(), videoId: yoursVideoId });
+        }
+      } catch(e) {}
+    }, 15000);
+  }
+
+  // ── Theirs (partner's mirror — no controls, syncs to partner's state) ──
+  async function createTheirsPlayer(videoId) {
+    destroyPlayer('theirs');
+    theirsUnlocked = false;
+    pendingSync = null;
+
+    const el = document.getElementById('musicTheirs');
+    if (!el) return;
+    el.innerHTML = `
+      <div class="music-player-wrap"><div id="theirs-yt"></div></div>
+      <button class="music-unlock-btn" id="musicUnlockBtn">▶ Click to sync audio</button>
+    `;
+
+    document.getElementById('musicUnlockBtn')?.addEventListener('click', () => {
+      document.getElementById('musicUnlockBtn')?.remove();
+      theirsUnlocked = true;
+      if (pendingSync && theirsPlayer) {
+        applySync(pendingSync);
+        pendingSync = null;
+      } else if (theirsPlayer) {
+        try { theirsPlayer.playVideo(); } catch(e) {}
+      }
+    });
+
+    await ensureYTApi();
+    theirsPlayer = await makePlayer('theirs-yt', videoId, 0, 0, null);
+  }
+
+  // ── Receive sync events from partner and mirror their player state ──
+  function applySync(data) {
+    if (!theirsPlayer) return;
+    if (!theirsUnlocked) { pendingSync = data; return; }
+    try {
+      if (data.action === 'play') {
+        theirsPlayer.seekTo(data.time || 0, true);
+        theirsPlayer.playVideo();
+      } else if (data.action === 'pause') {
+        theirsPlayer.pauseVideo();
+        theirsPlayer.seekTo(data.time || 0, true);
+      } else if (data.action === 'sync') {
+        const cur = theirsPlayer.getCurrentTime();
+        if (Math.abs(cur - (data.time || 0)) > 3) theirsPlayer.seekTo(data.time, true);
+      }
+    } catch(e) {}
+  }
+
+  function destroyPlayer(which) {
+    if (which === 'yours' && yoursPlayer) {
+      try { yoursPlayer.destroy(); } catch(e) {}
+      yoursPlayer = null;
+    }
+    if (which === 'theirs' && theirsPlayer) {
+      try { theirsPlayer.destroy(); } catch(e) {}
+      theirsPlayer = null;
+    }
   }
 
   // ── Share handler ──
@@ -46,59 +167,35 @@ const MusicSync = (() => {
     }
 
     if (btn) btn.textContent = '...';
-    const info = await fetchInfo(videoId);
+    await createYoursPlayer(videoId);
     if (btn) btn.textContent = 'Share';
-
-    if (!info) return;
     if (input) input.value = '';
 
-    setYoursUI(info);
-    if (onShare) onShare(info);
+    if (onShare) onShare({ videoId });
   }
 
-  // ── UI ──
-  function esc(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  function trackHTML(t) {
-    return `<a class="music-track-row" href="${esc(t.url)}" target="_blank" rel="noopener">
-      <img class="music-art" src="${esc(t.thumbnail)}" alt="" loading="lazy">
-      <div class="music-info">
-        <div class="music-name">${esc(t.title)}</div>
-        <div class="music-artist">${esc(t.author)}</div>
-      </div>
-    </a>`;
-  }
-
-  function setYoursUI(track) {
-    const el = document.getElementById('musicYours');
-    if (el) el.innerHTML = track ? trackHTML(track) : '<span class="music-idle">nothing shared</span>';
-  }
-
+  // ── Called by app.js when partner sends a track ──
   function setPartnerTrack(raw) {
-    const el = document.getElementById('musicTheirs');
-    if (!el) return;
-    if (!raw) { el.innerHTML = '<span class="music-idle">not sharing</span>'; return; }
-    // Validate — raw comes from an untrusted peer
-    const videoId = typeof raw.videoId === 'string' ? raw.videoId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20) : null;
-    if (!videoId) { el.innerHTML = '<span class="music-idle">not sharing</span>'; return; }
-    const t = {
-      videoId,
-      title:     String(raw.title  || '').slice(0, 200),
-      author:    String(raw.author || '').slice(0, 200),
-      thumbnail: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
-      url:       `https://music.youtube.com/watch?v=${videoId}`,
-    };
-    el.innerHTML = trackHTML(t);
+    const videoId = typeof raw?.videoId === 'string'
+      ? raw.videoId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20)
+      : null;
+    if (!videoId) return;
+    isController = false;
+    createTheirsPlayer(videoId);
   }
 
   function resetPartner() {
+    destroyPlayer('theirs');
+    theirsUnlocked = false;
+    pendingSync = null;
+    if (syncInterval) { clearInterval(syncInterval); syncInterval = null; }
+    isController = false;
     const el = document.getElementById('musicTheirs');
     if (el) el.innerHTML = '<span class="music-idle">not sharing</span>';
   }
 
   function setOnShare(cb) { onShare = cb; }
+  function setOnSyncSend(cb) { onSyncSend = cb; }
 
   function init() {
     const btn   = document.getElementById('musicShareBtn');
@@ -107,5 +204,5 @@ const MusicSync = (() => {
     if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') handleShare(); });
   }
 
-  return { init, setOnShare, setPartnerTrack, resetPartner };
+  return { init, setOnShare, setOnSyncSend, setPartnerTrack, applySync, resetPartner };
 })();

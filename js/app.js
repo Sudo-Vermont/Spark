@@ -288,6 +288,9 @@ const AppState = {
     if (data.type === 'music') {
       MusicSync.setPartnerTrack(data.track || null);
     }
+    if (data.type === 'music-sync') {
+      MusicSync.applySync(data);
+    }
   }
 
   // ── Remote stream received ──
@@ -340,9 +343,12 @@ const AppState = {
     GeminiCoach.showCoachUI();
     if (els.moodNote) els.moodNote.textContent = 'live analysis running...';
 
-    // Music — wire up the share callback so pastes get sent to the partner
+    // Music — wire up callbacks so track shares and sync events reach the partner
     MusicSync.setOnShare((track) => {
       if (conn?.open) try { conn.send({ type: 'music', track }); } catch(e){}
+    });
+    MusicSync.setOnSyncSend((payload) => {
+      if (conn?.open) try { conn.send({ type: 'music-sync', ...payload }); } catch(e){}
     });
   }
 
@@ -390,6 +396,7 @@ const AppState = {
     GeminiCoach.hideCoachUI();
     MusicSync.resetPartner();
     MusicSync.setOnShare(null);
+    MusicSync.setOnSyncSend(null);
 
     ['energy','curiosity','humor','depth'].forEach(k => {
       const b = $('mood-' + k), p = $('pct-' + k);
