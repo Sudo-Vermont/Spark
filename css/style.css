@@ -61,6 +61,21 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .btn-ghost { padding:10px 14px; background:var(--surface2); border:1px solid var(--border2); border-radius:var(--r-sm); color:var(--text2); font-family:var(--mono); font-size:12px; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
 .btn-ghost:hover { background:var(--surface3); color:var(--text); }
 
+/* PROFILE SETUP (splash) */
+.profile-setup { width:100%; display:flex; flex-direction:column; gap:10px; }
+.setup-label-sm { font-size:11px; font-family:var(--mono); color:var(--text3); text-transform:uppercase; letter-spacing:0.1em; text-align:center; }
+.avatar-row { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+.avatar-btn { width:42px; height:42px; border-radius:50%; background:var(--surface2); border:2px solid var(--border); font-size:20px; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; justify-content:center; padding:0; }
+.avatar-btn:hover { border-color:var(--border2); transform:translateY(-1px); }
+.avatar-btn.selected { border-color:var(--accent); background:rgba(124,106,247,0.15); box-shadow:0 0 12px var(--accent-glow); }
+
+/* PARTNER INTRO (shows briefly on match) */
+.partner-intro { position:absolute; top:44px; left:50%; transform:translateX(-50%); z-index:7; display:flex; align-items:center; gap:10px; background:rgba(10,10,15,0.82); backdrop-filter:blur(12px); border:1px solid rgba(124,106,247,0.3); border-radius:14px; padding:10px 16px; max-width:85%; animation:fadeUp 0.35s ease; pointer-events:none; }
+.partner-intro-avatar { font-size:26px; line-height:1; flex-shrink:0; }
+.partner-intro-text { min-width:0; }
+.partner-intro-name { font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.partner-intro-bio { font-size:11px; color:var(--text2); font-family:var(--mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
 /* VIDEO AREA */
 .video-area { flex:1; display:flex; flex-direction:column; padding:20px 10px 20px 20px; gap:0; overflow:hidden; min-width:0; }
 .videos-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; flex:1; min-height:0; }
@@ -319,6 +334,9 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 
   /* Chat bubbles sit above the floating coach bar */
   .chat-overlay { bottom:64px; }
+
+  /* Intro card keeps clear of the camera bubble (top-right) */
+  .partner-intro { top:46px; left:10px; right:112px; transform:none; max-width:none; }
 
   /* Input sits above the controls; label hidden to reduce clutter */
   .you-input-row { margin-top:10px; }

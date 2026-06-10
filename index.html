@@ -33,6 +33,13 @@
       <h1 class="setup-title">Spark</h1>
       <p class="setup-sub">AI-coached video chat. Get matched with a random stranger instantly.</p>
 
+      <div class="profile-setup">
+        <div class="setup-label-sm">Your profile</div>
+        <div class="avatar-row" id="avatarRow"></div>
+        <input type="text" id="profileName" class="setup-input" maxlength="24" placeholder="Your name (optional)" autocomplete="off">
+        <input type="text" id="profileBio" class="setup-input" maxlength="80" placeholder="Your interests — music, gaming, travel…" autocomplete="off">
+      </div>
+
       <button class="btn-start" id="startBtn">
         <span class="btn-start-icon">🎥</span> Find a Match
       </button>
@@ -66,6 +73,13 @@
         <div class="video-label" id="strangerLabel" style="display:none">Partner</div>
         <div class="room-badge" id="roomBadge"></div>
         <div class="chat-overlay" id="chatLog"></div>
+        <div class="partner-intro" id="partnerIntro" style="display:none">
+          <span class="partner-intro-avatar" id="piAvatar"></span>
+          <div class="partner-intro-text">
+            <div class="partner-intro-name" id="piName"></div>
+            <div class="partner-intro-bio" id="piBio"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -294,6 +308,7 @@
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 <script src="js/config.js"></script>
+<script src="js/profile.js"></script>
 <script src="js/music.js"></script>
 <script src="js/watch.js"></script>
 <script src="js/speech.js"></script>

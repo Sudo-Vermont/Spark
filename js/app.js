@@ -46,6 +46,11 @@ const AppState = {
   let peer = null;       // PeerJS instance
   let conn = null;       // DataConnection (for transcript relay)
   let call = null;       // MediaConnection
+  let myProfile = null;
+  let partnerProfile = null;
+  let introTimer = null;
+
+  Profile.init(); // populate splash avatar picker + saved name/bio
   let localStream = null;
   let timerInterval = null;
   let sessionStart = null;
@@ -63,6 +68,8 @@ const AppState = {
 
   // ── Start / setup ──
   els.startBtn.addEventListener('click', async () => {
+    myProfile = Profile.commit(); // save + read profile from splash inputs
+
     // Camera + mic — try video+audio, fall back to audio-only
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -287,6 +294,13 @@ const AppState = {
       GeminiCoach.showTyping(false);
       GeminiCoach.triggerAnalysis(AppState.transcript);
     }
+    if (data.type === 'profile') {
+      const p = Profile.sanitize(data.profile || {});
+      if (JSON.stringify(p) !== JSON.stringify(partnerProfile)) {
+        partnerProfile = p;
+        showPartnerProfile(p);
+      }
+    }
     if (data.type === 'chat' && typeof data.text === 'string' && data.text.trim()) {
       const text = data.text.slice(0, 500);
       addChatBubble('them', text);
@@ -362,6 +376,12 @@ const AppState = {
     GeminiCoach.showCoachUI();
     if (els.moodNote) els.moodNote.textContent = 'live analysis running...';
 
+    // Send our profile — retry a few times since the data channel may open late
+    const sendProfile = () => {
+      if (conn?.open && myProfile) try { conn.send({ type: 'profile', profile: myProfile }); } catch(e){}
+    };
+    [300, 1200, 3000].forEach(ms => setTimeout(sendProfile, ms));
+
     // Music — wire up callbacks so track shares and sync events reach the partner
     MusicSync.setOnShare((track) => {
       if (conn?.open) try { conn.send({ type: 'music', track }); } catch(e){}
@@ -399,6 +419,11 @@ const AppState = {
     els.waitingTitle.textContent = reason || 'Disconnected';
     els.waitingSub.textContent   = '';
     els.strangerLabel.style.display = 'none';
+    els.strangerLabel.textContent = 'Partner';
+    partnerProfile = null;
+    clearTimeout(introTimer);
+    const introEl = $('partnerIntro');
+    if (introEl) introEl.style.display = 'none';
 
     // Show "Start New Chat" button
     let newChatBtn = $('newChatBtn');
@@ -571,6 +596,23 @@ const AppState = {
     addTranscriptLine('you', text); // silent — feeds the coach
     if (conn?.open) conn.send({ type: 'chat', text });
     GeminiCoach.triggerAnalysis(AppState.transcript);
+  }
+
+  // ── Partner profile display ──
+  function showPartnerProfile(p) {
+    const name = p.name || 'Stranger';
+    els.strangerLabel.textContent = `${p.avatar} ${name}`;
+    const intro = $('partnerIntro');
+    if (intro) {
+      $('piAvatar').textContent = p.avatar;
+      $('piName').textContent = `You're chatting with ${name}`;
+      const bio = $('piBio');
+      bio.textContent = p.bio || '';
+      bio.style.display = p.bio ? 'block' : 'none';
+      intro.style.display = 'flex';
+      clearTimeout(introTimer);
+      introTimer = setTimeout(() => { intro.style.display = 'none'; }, 7000);
+    }
   }
 
   // ── Chat bubbles over the partner video ──
