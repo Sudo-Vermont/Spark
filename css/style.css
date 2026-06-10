@@ -66,6 +66,8 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .videos-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; flex:1; min-height:0; }
 .video-card { position:relative; background:var(--surface); border-radius:var(--r); border:1px solid var(--border); overflow:hidden; display:flex; align-items:center; justify-content:center; }
 .video-card video { width:100%; height:100%; object-fit:cover; display:block; will-change:transform; transform:translateZ(0); }
+/* Your own preview acts like a mirror — partner still receives the normal feed */
+#localCard video { transform:scaleX(-1) translateZ(0); }
 .video-card { contain:layout style; }
 .video-label { position:absolute; bottom:12px; left:12px; font-size:12px; font-family:var(--mono); color:rgba(255,255,255,0.85); background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); padding:4px 10px; border-radius:100px; border:1px solid rgba(255,255,255,0.1); }
 .video-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; background:var(--surface); }
