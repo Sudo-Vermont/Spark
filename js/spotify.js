@@ -140,11 +140,11 @@ const SpotifySync = (() => {
     stopPolling();
     const tick = async () => {
       const t = await fetchNowPlaying();
-      const uriChanged   = (t?.uri      ?? null)  !== (currentTrack?.uri      ?? null);
-      const stateChanged = (t?.isPlaying ?? false) !== (currentTrack?.isPlaying ?? false);
       currentTrack = t;
       updateYoursUI();
-      if ((uriChanged || stateChanged) && onTrackChange) onTrackChange(t);
+      // Always broadcast to partner every tick — don't filter by change,
+      // otherwise the first send after matching never fires (track didn't "change")
+      if (onTrackChange) onTrackChange(t);
     };
     tick();
     pollTimer = setInterval(tick, 8000);

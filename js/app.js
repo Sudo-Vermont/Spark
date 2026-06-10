@@ -340,15 +340,16 @@ const AppState = {
     GeminiCoach.showCoachUI();
     if (els.moodNote) els.moodNote.textContent = 'live analysis running...';
 
-    // Spotify — start polling and send track to partner whenever it changes
+    // Spotify — broadcast current track to partner on every poll tick
     SpotifySync.startPolling((track) => {
       if (conn?.open) try { conn.send({ type: 'nowplaying', track }); } catch(e){}
     });
-    // Send whatever is already playing right now (don't wait for a change event)
-    setTimeout(() => {
+    // Also try sending the already-loaded track a few times to handle
+    // data channel open timing (conn.open may lag behind the stream event)
+    [800, 2000, 4000].forEach(delay => setTimeout(() => {
       const cur = SpotifySync.getCurrent();
       if (cur && conn?.open) try { conn.send({ type: 'nowplaying', track: cur }); } catch(e){}
-    }, 1200);
+    }, delay));
   }
 
   // ── Disconnected ──
