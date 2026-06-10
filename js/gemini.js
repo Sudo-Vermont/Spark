@@ -1,4 +1,4 @@
-// coach.js — 100% local coaching: face mesh math + keyword analysis (no API, no tokens)
+// gemini.js — 100% local coaching: face mesh math + keyword analysis (no API, no tokens)
 
 const GeminiCoach = (() => {
   let analysisTimer = null;
@@ -34,6 +34,10 @@ const GeminiCoach = (() => {
     return (typeof AppState !== 'undefined' && AppState.transcript) ? AppState.transcript : [];
   }
 
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
   function init() {
     FaceAnalyzer.init();
     faceReady = true;
@@ -67,12 +71,26 @@ const GeminiCoach = (() => {
   }
 
   function showCoachUI() { $('coachToggle').style.display = 'flex'; showPanel(); }
-  function hideCoachUI() { $('coachPanel').classList.add('hidden'); $('coachToggle').style.display = 'none'; }
+  function hideCoachUI() {
+    $('coachPanel').classList.add('hidden');
+    $('coachToggle').style.display = 'none';
+    resetPartnerMood();
+  }
 
-  function startPeriodic(transcriptRef) {
+  function resetPartnerMood() {
+    const e = $('partnerMoodEmoji'), l = $('partnerMoodLabel'), c = $('partnerMoodConf');
+    if (e) e.textContent = '—';
+    if (l) l.textContent = 'not connected';
+    if (c) c.textContent = '';
+    setBar('fm-smile', 'fv-smile', 0);
+    setBar('fm-alert', 'fv-alert', 0);
+  }
+
+  function startPeriodic(transcriptRef, intervalMs = 8000) {
     stopPeriodic();
-    setTimeout(() => runAnalysis(transcriptRef), 3000);
-    analysisTimer = setInterval(() => runAnalysis(transcriptRef), 8000);
+    // Read the transcript fresh each tick — AppState.transcript gets reassigned on reconnect
+    setTimeout(() => runAnalysis(getTranscript()), 3000);
+    analysisTimer = setInterval(() => runAnalysis(getTranscript()), intervalMs);
   }
 
   function stopPeriodic() {
@@ -127,7 +145,7 @@ const GeminiCoach = (() => {
         <div class="analysis-divider"></div>
         <div class="analysis-section" style="flex:1;min-width:0">
           <div class="analysis-label">✦ local analysis</div>
-          <div class="analysis-value live-text">${snippet}</div>
+          <div class="analysis-value live-text">${esc(snippet)}</div>
         </div>`;
     }
 
@@ -176,7 +194,7 @@ const GeminiCoach = (() => {
     if (!m) {
       if (overall) overall.textContent = 'no face detected';
       ['symmetry','thirds','golden'].forEach(k => {
-        const bar = $('fm-' + k), val = $('fv-' + k.replace('fm-',''));
+        const bar = $('fm-' + k);
         if (bar) bar.style.width = '0%';
       });
       $('fv-symmetry') && ($('fv-symmetry').textContent = '—');

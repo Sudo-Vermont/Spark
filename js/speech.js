@@ -27,7 +27,14 @@ const SpeechManager = (() => {
       }
       if (buf.trim()) { if (onYours) onYours(buf.trim()); buf = ''; }
     };
-    r.onerror = (e) => { if (e.error !== 'no-speech') console.warn('SR error:', e.error); };
+    r.onerror = (e) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture') {
+        active = false; // fatal — restarting would just loop forever
+        console.warn('SR disabled:', e.error);
+      } else if (e.error !== 'no-speech') {
+        console.warn('SR error:', e.error);
+      }
+    };
     r.onend   = () => { yourRec = null; if (active) startYours(); };
     yourRec = r;
     try { r.start(); } catch(e) {}
@@ -44,15 +51,24 @@ const SpeechManager = (() => {
   function pushToTalk() {
     return new Promise((res) => {
       if (!supported) return res(null);
+      // Browsers allow only one active recognition — pause the continuous one first
+      const wasActive = active;
+      if (yourRec) { active = false; try { yourRec.abort(); } catch(e){} yourRec = null; }
+      let finished = false;
+      const done = (text) => {
+        if (finished) return;
+        finished = true;
+        if (wasActive) { active = true; startYours(); }
+        res(text);
+      };
       const r = new SR();
       r.continuous     = false;
       r.interimResults = false;
       r.lang = 'en-US';
-      let got = false;
-      r.onresult = (e) => { got = true; res(e.results[0][0].transcript); };
-      r.onerror  = () => res(null);
-      r.onend    = () => { if (!got) res(null); };
-      try { r.start(); } catch(e) { res(null); }
+      r.onresult = (e) => done(e.results[0][0].transcript);
+      r.onerror  = () => done(null);
+      r.onend    = () => done(null);
+      try { r.start(); } catch(e) { done(null); }
     });
   }
 

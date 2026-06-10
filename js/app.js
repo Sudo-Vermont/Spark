@@ -169,6 +169,7 @@ const AppState = {
     });
 
     // Waiter: incoming call
+    const pendingDcs = new Map(); // data channels by remote peer id, until a call picks one
     peer.on('call', (incomingCall) => {
       if (AppState.connected || call) {
         // Already matched — reject so the prober moves on
@@ -177,14 +178,38 @@ const AppState = {
       }
       console.log('Matched! Incoming call');
       call = incomingCall;
+      let gotStream = false;
+
+      // Adopt this caller's data channel; close any stray probes from other callers
+      const partnerDc = pendingDcs.get(incomingCall.peer);
+      if (partnerDc) conn = partnerDc;
+      pendingDcs.forEach((dc, pid) => {
+        if (pid !== incomingCall.peer) { try { dc.close(); } catch(e){} }
+      });
+      pendingDcs.clear();
+
       call.answer(localStream || new MediaStream());
-      call.on('stream', onRemoteStream);
-      call.on('close', () => onDisconnected('partner left'));
+      call.on('stream', (rs) => { gotStream = true; onRemoteStream(rs); });
+      call.on('close', () => {
+        if (gotStream) {
+          onDisconnected('partner left');
+        } else {
+          // Handshake never completed (caller gave up) — keep waiting on this slot
+          call = null;
+          if (conn) { try { conn.close(); } catch(e){} conn = null; }
+        }
+      });
       call.on('error', (e) => console.warn('Call error:', e));
     });
 
     // Waiter: data channel (callers also use it to detect we're busy)
     peer.on('connection', (dc) => {
+      // Our matched partner's channel can arrive after their call — always accept it
+      if (call && dc.peer === call.peer) {
+        conn = dc;
+        dc.on('data', onDataReceived);
+        return;
+      }
       if (AppState.connected || call) {
         dc.on('open', () => {
           try { dc.send({ type: 'busy' }); } catch(e){}
@@ -192,8 +217,16 @@ const AppState = {
         });
         return;
       }
+      pendingDcs.set(dc.peer, dc);
       conn = dc;
       dc.on('data', onDataReceived);
+    });
+
+    // If the signaling server drops us while waiting, reconnect so the slot stays live
+    const thisPeer = peer;
+    peer.on('disconnected', () => {
+      if (gen !== searchGen || AppState.connected || thisPeer !== peer) return;
+      try { thisPeer.reconnect(); } catch(e){}
     });
   }
 
@@ -245,8 +278,9 @@ const AppState = {
   }
 
   function onDataReceived(data) {
-    if (data.type === 'transcript') {
-      addTranscriptLine('them', data.text);
+    if (!data || typeof data !== 'object') return;
+    if (data.type === 'transcript' && typeof data.text === 'string' && data.text.trim()) {
+      addTranscriptLine('them', data.text.slice(0, 500));
       GeminiCoach.showTyping(false);
       GeminiCoach.triggerAnalysis(AppState.transcript);
     }
@@ -270,6 +304,7 @@ const AppState = {
 
   // ── Connected ──
   function onConnected() {
+    if (AppState.connected) return; // 'stream' can fire more than once
     AppState.connected = true;
     AppState.transcript = [];
     GeminiCoach.resetTopics();
@@ -304,6 +339,8 @@ const AppState = {
 
   // ── Disconnected ──
   function onDisconnected(reason) {
+    // Ignore stray close events after teardown (closing our own call echoes 'close')
+    if (!AppState.connected && !peer && !call && !conn) return;
     searchGen++; // cancel any pending slot-search retries
     AppState.connected = false;
     GeminiCoach.stopPeriodic();
@@ -453,7 +490,7 @@ const AppState = {
       const oldTrack  = localStream.getAudioTracks()[0];
       if (oldTrack) { oldTrack.stop(); localStream.removeTrack(oldTrack); }
       localStream.addTrack(newTrack);
-      if (!muted) newTrack.enabled = true;
+      newTrack.enabled = !muted; // keep mute state across mic switches
       activeMicId = deviceId;
       // Hot-swap in active call without renegotiation
       if (call?.peerConnection) {
