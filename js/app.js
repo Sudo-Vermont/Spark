@@ -89,6 +89,7 @@ const AppState = {
 
     // Init modules
     GeminiCoach.init();
+    SpotifySync.init();
     initSpeech();
     initControls();
     initPeer();
@@ -284,6 +285,9 @@ const AppState = {
       GeminiCoach.showTyping(false);
       GeminiCoach.triggerAnalysis(AppState.transcript);
     }
+    if (data.type === 'nowplaying') {
+      SpotifySync.setPartnerTrack(data.track || null);
+    }
   }
 
   // ── Remote stream received ──
@@ -335,6 +339,16 @@ const AppState = {
     GeminiCoach.startPeriodic(AppState.transcript, 16000);
     GeminiCoach.showCoachUI();
     if (els.moodNote) els.moodNote.textContent = 'live analysis running...';
+
+    // Spotify — start polling and send track to partner whenever it changes
+    SpotifySync.startPolling((track) => {
+      if (conn?.open) try { conn.send({ type: 'nowplaying', track }); } catch(e){}
+    });
+    // Send whatever is already playing right now (don't wait for a change event)
+    setTimeout(() => {
+      const cur = SpotifySync.getCurrent();
+      if (cur && conn?.open) try { conn.send({ type: 'nowplaying', track: cur }); } catch(e){}
+    }, 1200);
   }
 
   // ── Disconnected ──
@@ -379,6 +393,8 @@ const AppState = {
     GeminiCoach.setScanning('session ended');
     GeminiCoach.showTyping(false);
     GeminiCoach.hideCoachUI();
+    SpotifySync.stopPolling();
+    SpotifySync.resetPartner();
 
     ['energy','curiosity','humor','depth'].forEach(k => {
       const b = $('mood-' + k), p = $('pct-' + k);

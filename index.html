@@ -37,6 +37,7 @@
         <span class="btn-start-icon">🎥</span> Find a Match
       </button>
       <p class="setup-note">Peer-to-peer video · 100% local AI coaching</p>
+      <p id="spotifyReturnNote" style="display:none" class="setup-note spotify-return-note">✓ Spotify connected — click Find a Match to start</p>
     </div>
   </div>
 
@@ -153,6 +154,22 @@
       </div>
     </div>
 
+    <div class="sidebar-card" id="spotifyCard">
+      <div class="sidebar-card-header">
+        <div class="sidebar-card-title">🎵 Spotify</div>
+      </div>
+      <div class="sidebar-card-body">
+        <div class="spotify-section-label">You</div>
+        <div id="spotifyYours" class="spotify-slot">
+          <button class="spotify-connect-btn" id="spotifyConnectBtn">Connect Spotify</button>
+        </div>
+        <div class="spotify-section-label" style="margin-top:10px">Partner</div>
+        <div id="spotifyTheirs" class="spotify-slot">
+          <span class="spotify-idle">not sharing</span>
+        </div>
+      </div>
+    </div>
+
     <div class="sidebar-card" style="display:none">
       <div class="sidebar-card-header">
         <div class="sidebar-card-title">Detected Topics</div>
@@ -257,6 +274,7 @@
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 <script src="js/config.js"></script>
+<script src="js/spotify.js"></script>
 <script src="js/speech.js"></script>
 <script src="js/facemesh.js"></script>
 <script src="js/gemini.js"></script>
