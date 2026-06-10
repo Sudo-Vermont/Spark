@@ -8,5 +8,5 @@
 //        https://sudo-vermont.github.io/Spark/
 //   3. Copy your Client ID and paste it below
 const SPARK_CONFIG = {
-  spotifyClientId: '', // e.g. 'a1b2c3d4e5f6...'
+  spotifyClientId: 'faff3f3fc2d146bbbe2070ad2bc63fea',
 };

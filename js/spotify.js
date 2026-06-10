@@ -18,7 +18,7 @@ const SpotifySync = (() => {
       alert('Add your Spotify Client ID to js/config.js to use this feature.\n\nGet one free at developer.spotify.com — see the setup note in config.js.');
       return;
     }
-    sessionStorage.setItem('spark_spotify_redirect', '1');
+    localStorage.setItem('spark_spotify_redirect', '1');
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: 'token',
@@ -32,7 +32,7 @@ const SpotifySync = (() => {
   function disconnect() {
     token = null;
     currentTrack = null;
-    sessionStorage.removeItem('spark_spotify_token');
+    localStorage.removeItem('spark_spotify_token');
     stopPolling();
     updateYoursUI();
   }
@@ -48,7 +48,7 @@ const SpotifySync = (() => {
       });
       if (r.status === 401) {
         token = null;
-        sessionStorage.removeItem('spark_spotify_token');
+        localStorage.removeItem('spark_spotify_token');
         updateYoursUI();
         return null;
       }
@@ -140,8 +140,8 @@ const SpotifySync = (() => {
   }
 
   function init() {
-    // Read token from sessionStorage (set during OAuth redirect handling at bottom of file)
-    const stored = sessionStorage.getItem('spark_spotify_token');
+    // Read token from localStorage (set during OAuth redirect handling at bottom of file)
+    const stored = localStorage.getItem('spark_spotify_token');
     if (stored) {
       token = stored;
       startPolling(null); // onChange set properly in onConnected
@@ -158,8 +158,8 @@ const SpotifySync = (() => {
   const hash = new URLSearchParams(location.hash.slice(1));
   const t = hash.get('access_token');
   if (!t) return;
-  sessionStorage.setItem('spark_spotify_token', t);
-  sessionStorage.removeItem('spark_spotify_redirect');
+  localStorage.setItem('spark_spotify_token', t);
+  localStorage.removeItem('spark_spotify_redirect');
   history.replaceState(null, '', location.pathname);
   // Show "connected" note on the splash screen so the user knows to click Start
   const note = document.getElementById('spotifyReturnNote');
