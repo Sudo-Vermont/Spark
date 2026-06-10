@@ -284,6 +284,47 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .watch-unlock-btn { display: block; width: 100%; padding: 10px; background: rgba(124,106,247,0.12); border: 1px solid rgba(124,106,247,0.25); border-radius: 0; color: var(--accent2); font-family: var(--mono); font-size: 13px; cursor: pointer; text-align: center; transition: background 0.15s; }
 .watch-unlock-btn:hover { background: rgba(124,106,247,0.22); }
 
+/* ACCOUNT */
+.account-btn { position:relative; display:flex; align-items:center; gap:6px; font-size:12px; font-family:var(--mono); color:var(--text2); background:var(--surface2); padding:6px 12px; border-radius:100px; border:1px solid var(--border); cursor:pointer; transition:all 0.15s; white-space:nowrap; max-width:160px; overflow:hidden; text-overflow:ellipsis; }
+.account-btn:hover { background:var(--surface3); color:var(--text); }
+.account-btn.notify::after { content:''; position:absolute; top:2px; right:2px; width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent-glow); animation:pulse 1.2s ease-in-out infinite; }
+.acct-modal { position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:300; display:flex; align-items:center; justify-content:center; padding:16px; }
+.acct-box { background:var(--surface); border:1px solid var(--border2); border-radius:var(--r); width:100%; max-width:420px; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 24px 64px rgba(0,0,0,0.6); }
+.acct-top { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); }
+.acct-title { font-size:13px; font-weight:700; }
+.acct-body { padding:16px; overflow-y:auto; display:flex; flex-direction:column; gap:0; }
+.acct-body .setup-input { width:100%; margin-bottom:10px; }
+.acct-sub { font-size:12px; color:var(--text2); line-height:1.6; margin-bottom:12px; }
+.acct-cta { margin-bottom:8px; }
+.acct-msg { font-size:11px; font-family:var(--mono); color:var(--green); min-height:16px; margin-top:4px; }
+.acct-msg.acct-err { color:var(--danger); }
+.acct-link { background:none; border:none; color:var(--text3); font-size:11px; font-family:var(--mono); cursor:pointer; text-decoration:underline; padding:4px; }
+.acct-link:hover { color:var(--text); }
+.acct-code-input { text-align:center; font-size:22px !important; letter-spacing:0.4em; }
+.acct-whoami-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.acct-whoami { font-size:14px; font-weight:700; }
+.acct-add-row { display:flex; gap:6px; }
+.acct-add-row .setup-input { margin-bottom:0; }
+.acct-row { display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r-sm); margin-bottom:6px; }
+.acct-row-click { cursor:pointer; transition:background 0.15s; }
+.acct-row-click:hover { background:var(--surface3); }
+.acct-row-name { flex:1; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.acct-dim { color:var(--text3); font-weight:400; font-size:12px; }
+.acct-mini-btn { padding:6px 10px; background:rgba(124,106,247,0.12); border:1px solid rgba(124,106,247,0.25); border-radius:var(--r-sm); color:var(--accent2); font-family:var(--mono); font-size:11px; cursor:pointer; white-space:nowrap; transition:all 0.15s; flex-shrink:0; }
+.acct-mini-btn:hover { background:rgba(124,106,247,0.22); }
+.acct-mini-danger { background:rgba(248,113,113,0.08); border-color:rgba(248,113,113,0.2); color:var(--danger); }
+.acct-empty { font-size:12px; color:var(--text3); font-family:var(--mono); text-align:center; padding:14px 0; }
+.dm-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.dm-log { height:300px; max-height:45vh; overflow-y:auto; display:flex; flex-direction:column; gap:6px; background:var(--bg); border:1px solid var(--border); border-radius:var(--r-sm); padding:10px; margin-bottom:10px; }
+.dm-bubble { width:fit-content; max-width:80%; padding:7px 12px; border-radius:14px; font-size:13px; line-height:1.45; word-break:break-word; }
+.dm-bubble.you { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:4px; }
+.dm-bubble.them { align-self:flex-start; background:var(--surface3); color:var(--text); border-bottom-left-radius:4px; }
+
+/* Add-friend button over partner video */
+.add-friend-btn { position:absolute; top:12px; right:12px; z-index:7; display:inline-flex; align-items:center; gap:6px; padding:8px 14px; background:rgba(124,106,247,0.85); backdrop-filter:blur(8px); border:none; border-radius:100px; color:#fff; font-family:var(--font); font-size:12px; font-weight:700; cursor:pointer; transition:all 0.15s; box-shadow:0 4px 16px rgba(0,0,0,0.4); }
+.add-friend-btn:hover { background:var(--accent2); }
+.add-friend-btn:disabled { opacity:0.8; cursor:default; }
+
 /* Mobile-only elements (sheet toggle button, backdrop) — hidden on desktop */
 .mobile-only { display:none; }
 .sheet-backdrop { display:none; }
@@ -339,6 +380,10 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 
   /* Intro card keeps clear of the camera bubble (top-right) */
   .partner-intro { top:46px; left:10px; right:112px; transform:none; max-width:none; }
+
+  /* Add-friend sits below the camera bubble */
+  .add-friend-btn { top:146px; right:10px; }
+  .account-btn { padding:5px 9px; font-size:10px; max-width:110px; }
 
   /* Input sits above the controls; label hidden to reduce clutter */
   .you-input-row { margin-top:10px; }

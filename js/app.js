@@ -48,9 +48,21 @@ const AppState = {
   let call = null;       // MediaConnection
   let myProfile = null;
   let partnerProfile = null;
+  let partnerIdentity = null; // { uid, username } when partner is signed in
   let introTimer = null;
 
   Profile.init(); // populate splash avatar picker + saved name/bio
+  Account.wire();
+  Account.init();
+
+  // In-call "add friend" — appears when both sides are signed in
+  $('addFriendBtn')?.addEventListener('click', async () => {
+    const btn = $('addFriendBtn');
+    if (!partnerIdentity) return;
+    btn.disabled = true;
+    const res = await Account.sendFriendRequestTo(partnerIdentity.uid);
+    btn.textContent = res.ok ? '✓ Request sent' : 'Could not send';
+  });
   let localStream = null;
   let timerInterval = null;
   let sessionStart = null;
@@ -294,6 +306,15 @@ const AppState = {
       GeminiCoach.showTyping(false);
       GeminiCoach.triggerAnalysis(AppState.transcript);
     }
+    if (data.type === 'identity' && typeof data.uid === 'string' && /^[0-9a-f-]{36}$/i.test(data.uid)) {
+      partnerIdentity = { uid: data.uid, username: String(data.username || '').slice(0, 24) };
+      const afBtn = $('addFriendBtn');
+      if (afBtn && Account.signedIn() && partnerIdentity.uid !== Account.userId()) {
+        afBtn.textContent = `➕ Add @${partnerIdentity.username || 'friend'}`;
+        afBtn.disabled = false;
+        afBtn.style.display = 'inline-flex';
+      }
+    }
     if (data.type === 'profile') {
       const p = Profile.sanitize(data.profile || {});
       if (JSON.stringify(p) !== JSON.stringify(partnerProfile)) {
@@ -376,9 +397,11 @@ const AppState = {
     GeminiCoach.showCoachUI();
     if (els.moodNote) els.moodNote.textContent = 'live analysis running...';
 
-    // Send our profile — retry a few times since the data channel may open late
+    // Send our profile + signed-in identity — retry since the data channel may open late
     const sendProfile = () => {
-      if (conn?.open && myProfile) try { conn.send({ type: 'profile', profile: myProfile }); } catch(e){}
+      if (!conn?.open) return;
+      if (myProfile) try { conn.send({ type: 'profile', profile: myProfile }); } catch(e){}
+      if (Account.signedIn()) try { conn.send({ type: 'identity', uid: Account.userId(), username: Account.username() }); } catch(e){}
     };
     [300, 1200, 3000].forEach(ms => setTimeout(sendProfile, ms));
 
@@ -421,9 +444,12 @@ const AppState = {
     els.strangerLabel.style.display = 'none';
     els.strangerLabel.textContent = 'Partner';
     partnerProfile = null;
+    partnerIdentity = null;
     clearTimeout(introTimer);
     const introEl = $('partnerIntro');
     if (introEl) introEl.style.display = 'none';
+    const afBtn = $('addFriendBtn');
+    if (afBtn) { afBtn.style.display = 'none'; afBtn.disabled = false; afBtn.textContent = '➕ Add friend'; }
 
     // Show "Start New Chat" button
     let newChatBtn = $('newChatBtn');

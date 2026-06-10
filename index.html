@@ -14,6 +14,7 @@
 <header>
   <div class="logo"><div class="logo-dot"></div>Spark</div>
   <div class="header-right">
+    <button class="account-btn" id="accountBtn">👤 Sign in</button>
     <div class="status-badge">
       <div class="status-dot" id="statusDot"></div>
       <span id="statusText">offline</span>
@@ -73,6 +74,7 @@
         <div class="video-label" id="strangerLabel" style="display:none">Partner</div>
         <div class="room-badge" id="roomBadge"></div>
         <div class="chat-overlay" id="chatLog"></div>
+        <button class="add-friend-btn" id="addFriendBtn" style="display:none">➕ Add friend</button>
         <div class="partner-intro" id="partnerIntro" style="display:none">
           <span class="partner-intro-avatar" id="piAvatar"></span>
           <div class="partner-intro-text">
@@ -283,6 +285,72 @@
   </div>
 </div>
 
+<!-- ACCOUNT MODAL -->
+<div class="acct-modal" id="accountModal" style="display:none">
+  <div class="acct-box">
+    <div class="acct-top">
+      <span class="acct-title">👤 Account</span>
+      <button class="watch-close-btn" id="accountClose">✕</button>
+    </div>
+    <div class="acct-body">
+
+      <div id="av-signin" style="display:none">
+        <p class="acct-sub">Sign in or create an account — we'll email you a 6-digit code. No password needed.</p>
+        <input type="email" id="acctEmail" class="setup-input" placeholder="you@email.com" autocomplete="email">
+        <button class="btn-start acct-cta" id="acctSendCode">Send code</button>
+        <p class="acct-msg" id="signinMsg"></p>
+      </div>
+
+      <div id="av-code" style="display:none">
+        <p class="acct-sub">Enter the 6-digit code sent to <b id="codeEmailEcho"></b></p>
+        <input type="text" id="acctCode" class="setup-input acct-code-input" placeholder="123456" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+        <button class="btn-start acct-cta" id="acctVerify">Verify</button>
+        <button class="acct-link" id="acctResend">Use a different email</button>
+        <p class="acct-msg" id="codeMsg"></p>
+      </div>
+
+      <div id="av-username" style="display:none">
+        <p class="acct-sub">Pick a username — friends add you with this.</p>
+        <input type="text" id="acctUsername" class="setup-input" placeholder="username" maxlength="24" autocomplete="off">
+        <button class="btn-start acct-cta" id="acctSaveUsername">Save</button>
+        <p class="acct-msg" id="usernameMsg"></p>
+      </div>
+
+      <div id="av-main" style="display:none">
+        <div class="acct-whoami-row">
+          <span class="acct-whoami" id="acctWhoami"></span>
+          <button class="acct-link" id="acctSignOut">sign out</button>
+        </div>
+        <div class="acct-add-row">
+          <input type="text" id="acctAddInput" class="setup-input" placeholder="Add friend by @username" autocomplete="off">
+          <button class="acct-mini-btn" id="acctAddBtn">Add</button>
+        </div>
+        <p class="acct-msg" id="mainMsg"></p>
+        <div id="acctRequestsWrap" style="display:none">
+          <div class="mood-sub-label">Friend requests</div>
+          <div id="acctRequests"></div>
+        </div>
+        <div class="mood-sub-label" style="margin-top:10px">Friends</div>
+        <div id="acctFriends"></div>
+      </div>
+
+      <div id="av-chat" style="display:none">
+        <div class="dm-head">
+          <button class="acct-mini-btn" id="chatBack">←</button>
+          <span class="acct-whoami" id="chatFriendName"></span>
+        </div>
+        <div class="dm-log" id="acctChatLog"></div>
+        <div class="acct-add-row">
+          <input type="text" id="acctChatInput" class="setup-input" placeholder="Message…" maxlength="1000" autocomplete="off">
+          <button class="acct-mini-btn" id="acctChatSend">Send</button>
+        </div>
+        <p class="acct-msg" id="chatMsg"></p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <!-- WATCH TOGETHER MODAL -->
 <div class="watch-modal" id="watchModal" style="display:none">
   <div class="watch-modal-box">
@@ -304,8 +372,10 @@
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/profile.js"></script>
+<script src="js/account.js"></script>
 <script src="js/music.js"></script>
 <script src="js/watch.js"></script>
 <script src="js/speech.js"></script>
