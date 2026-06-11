@@ -5,6 +5,6 @@
 // server-side by Row Level Security policies (see supabase/schema.sql).
 // Until these are filled in, the app works exactly as before, just without accounts.
 const SPARK_CONFIG = {
-  supabaseUrl: '',     // e.g. 'https://abcdefgh.supabase.co'
-  supabaseAnonKey: ''  // Settings → API → anon public key
+  supabaseUrl: 'https://obgshhqgnwspvsekvgpa.supabase.co',
+  supabaseAnonKey: 'sb_publishable_IqpwqNeYDUNxPoNnfROJCg_AIe8pVRB'
 };
