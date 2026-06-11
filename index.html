@@ -14,7 +14,7 @@
 <header>
   <div class="logo"><div class="logo-dot"></div>Spark</div>
   <div class="header-right">
-    <button class="account-btn" id="accountBtn">👤 Sign in</button>
+    <button class="account-btn" id="accountBtn">👤 Sign up / in</button>
     <div class="status-badge">
       <div class="status-dot" id="statusDot"></div>
       <span id="statusText">offline</span>
@@ -289,15 +289,15 @@
 <div class="acct-modal" id="accountModal" style="display:none">
   <div class="acct-box">
     <div class="acct-top">
-      <span class="acct-title">👤 Account</span>
+      <span class="acct-title">👤 Sign in / Create account</span>
       <button class="watch-close-btn" id="accountClose">✕</button>
     </div>
     <div class="acct-body">
 
       <div id="av-signin" style="display:none">
-        <p class="acct-sub">Sign in or create an account — we'll email you a 6-digit code. No password needed.</p>
+        <p class="acct-sub">New here? Entering your email <b>creates your account automatically</b>. Already have one? Same box. We'll email you a 6-digit code — no password needed.</p>
         <input type="email" id="acctEmail" class="setup-input" placeholder="you@email.com" autocomplete="email">
-        <button class="btn-start acct-cta" id="acctSendCode">Send code</button>
+        <button class="btn-start acct-cta" id="acctSendCode">Continue</button>
         <p class="acct-msg" id="signinMsg"></p>
       </div>
 

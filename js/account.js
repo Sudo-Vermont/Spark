@@ -50,7 +50,7 @@ const Account = (() => {
   function updateHeaderBtn() {
     const btn = $('accountBtn');
     if (!btn) return;
-    btn.textContent = signedIn() ? `${me.avatar} ${me.username}` : '👤 Sign in';
+    btn.textContent = signedIn() ? `${me.avatar} ${me.username}` : '👤 Sign up / in';
     refreshRequestDot();
   }
 
